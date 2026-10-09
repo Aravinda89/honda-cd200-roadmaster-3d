@@ -179,7 +179,7 @@ input[type="range"] { width: 100%; min-width: 0; accent-color: var(--accent); }
     <header>
       <p class="eyebrow">Stage 1 · Outer body</p>
       <h1>CD200 Roadmaster</h1>
-      <p class="lede">A 1:1 scale model of the bike, built from published dimensions and the owner's photos. Click any part on the bike, or in this list, to identify it.</p>
+      <p class="lede">A 1:1 scale model of the bike, built from published dimensions and measurements taken from the owner's photos. Click any part on the bike, or in this list, to identify it.</p>
     </header>
 
     <section class="specs" aria-labelledby="specsTitle">
@@ -190,11 +190,11 @@ input[type="range"] { width: 100%; min-width: 0; accent-color: var(--accent); }
         <dt>Overall width</dt><dd>845 mm</dd>
         <dt>Overall height</dt><dd>1,105 mm</dd>
         <dt>Seat height</dt><dd>744 mm</dd>
-        <dt>Tyres</dt><dd>3.00-17</dd>
+        <dt>Tyres (published)</dt><dd>3.00-17</dd>
         <dt>Engine</dt><dd>194 cc twin</dd>
         <dt>Bore × stroke</dt><dd>53 × 44 mm</dd>
       </dl>
-      <p class="src">Sources: Wikipedia, UltimateSpecs, MotorcycleDB. Worth checking against a tape measure.</p>
+      <p class="src">Sources: Wikipedia, UltimateSpecs, MotorcycleDB. The owner's photos point to 18-inch wheels and a seat about 30 mm higher, so the model follows the photos there.</p>
     </section>
 
     <section aria-labelledby="partsTitle">
@@ -206,7 +206,7 @@ input[type="range"] { width: 100%; min-width: 0; accent-color: var(--accent); }
       <h2 class="block-title" id="basisTitle">How each part was sized</h2>
       <div class="basis-key">
         <span class="basis" data-basis="spec">From published spec</span>
-        <span class="basis" data-basis="photo">Traced from photos, size estimated</span>
+        <span class="basis" data-basis="photo">Measured from photos (about ±3 cm)</span>
         <span class="basis" data-basis="est">Estimated, not clear in photos</span>
       </div>
     </section>
@@ -284,14 +284,15 @@ const Y_UP = V(0, 1, 0);
 /* =====================================================================
    Key geometry, in metres. The bike faces +x; the rider's right is +z.
    ===================================================================== */
-const R = 0.29;                      // tyre outer radius for 3.00-17
+const R = 0.30;                      // tyre outer radius: 18-inch rim, measured from photos
+const RIM = 0.229;                   // 18-inch rim bead radius
 const WB = 1.28;                     // wheelbase (published)
 const RA = V(0, R), FA = V(WB, R);   // rear and front axle
-const RAKE = 27 * DEG;               // estimated from photos
+const RAKE = 25 * DEG;               // measured from photos
 const FD = V(-Math.sin(RAKE), Math.cos(RAKE));   // up the fork
 const FF = V(Math.cos(RAKE), Math.sin(RAKE));    // forward, square to the fork
 const forkPt = (t, fwd = 0, z = 0) => FA.clone().addScaledVector(FD, t).addScaledVector(FF, fwd).setZ(z);
-const CYL_BASE = V(0.725, 0.432), CYL_TILT = 18 * DEG;
+const CYL_BASE = V(0.68, 0.42), CYL_TILT = 8 * DEG;
 
 /* ---------- textures drawn on canvas ---------- */
 function canvasTexture(w, h, draw) {
@@ -300,15 +301,26 @@ function canvasTexture(w, h, draw) {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
   return t;
 }
+function pleatTexture(n) {
+  // transverse pleats across the seat top, each with a stitched seam, as on the owner's seats
+  return canvasTexture(512, 512, (g, w, h) => {
+    g.fillStyle = '#1e2124'; g.fillRect(0, 0, w, h);
+    const y0 = (1 - 0.64) * h, y1 = (1 - 0.36) * h;
+    for (let i = 1; i < n; i++) {
+      const x = (0.07 + 0.86 * i / n) * w;
+      g.fillStyle = '#0d0f11'; g.fillRect(x - 2, y0, 4, y1 - y0);
+      g.fillStyle = '#9aa1a7'; for (let y = y0 + 4; y < y1 - 4; y += 10) g.fillRect(x + 5, y, 2, 5);
+    }
+    g.fillStyle = '#2c3034'; [0.36, 0.64].forEach((v) => g.fillRect(0, (1 - v) * h - 2, w, 4));
+  });
+}
 const TEX = {
   knee: canvasTexture(64, 256, (g, w, h) => {
     g.fillStyle = '#131415'; g.fillRect(0, 0, w, h);
     for (let y = 8; y < h - 4; y += 15) { g.fillStyle = '#2d2f31'; g.fillRect(0, y, w, 6); g.fillStyle = '#070808'; g.fillRect(0, y + 6, w, 2); }
   }),
-  seat: canvasTexture(256, 512, (g, w, h) => {
-    g.fillStyle = '#1e2124'; g.fillRect(0, 0, w, h);
-    for (let v = 0.405; v <= 0.6; v += 0.03) { const y = (1 - v) * h; g.fillStyle = '#101214'; g.fillRect(0, y - 1, w, 2); g.fillStyle = '#30353a'; g.fillRect(0, y + 1, w, 2); }
-  }),
+  seat: pleatTexture(7),
+  pillion: pleatTexture(6),
   lens: canvasTexture(256, 256, (g, w, h) => {
     const grd = g.createRadialGradient(w * 0.42, h * 0.38, 8, w / 2, h / 2, w * 0.6);
     grd.addColorStop(0, '#ffffff'); grd.addColorStop(1, '#aeb9bf');
@@ -462,11 +474,12 @@ function surfPatch(S, { uc, du, ec, de, side = 1, off = 0.004, sq = 4, nr = 10, 
   return g;
 }
 /* Mudguard shell: arc around the wheel centre with a domed cross-section. */
-function fenderGeometry({ rBase, crown, width, phi0, phi1, p = 3, nPhi = 80, nS = 18 }) {
+/* rIn: radius of the side valance edge, rOut: radius of the crown; both may vary with angle. */
+function fenderGeometry({ rIn, rOut, width, phi0, phi1, p = 3, nPhi = 90, nS = 18 }) {
   const pos = [], idx = [];
   for (let i = 0; i <= nPhi; i++) {
-    const ph = phi0 + (phi1 - phi0) * i / nPhi, c = Math.cos(ph), s = Math.sin(ph);
-    for (let j = 0; j <= nS; j++) { const t = -1 + 2 * j / nS, r = rBase + crown * (1 - Math.pow(Math.abs(t), p)); pos.push(r * c, r * s, t * width / 2); }
+    const ph = phi0 + (phi1 - phi0) * i / nPhi, c = Math.cos(ph), s = Math.sin(ph), a = rIn(ph), b = rOut(ph);
+    for (let j = 0; j <= nS; j++) { const t = -1 + 2 * j / nS, r = a + (b - a) * (1 - Math.pow(Math.abs(t), p)); pos.push(r * c, r * s, t * width / 2); }
   }
   for (let i = 0; i < nPhi; i++) for (let j = 0; j < nS; j++) { const a = i * (nS + 1) + j, b = a + nS + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
   const g = new THREE.BufferGeometry();
@@ -474,7 +487,8 @@ function fenderGeometry({ rBase, crown, width, phi0, phi1, p = 3, nPhi = 80, nS 
   g.setIndex(idx); g.computeVertexNormals();
   return g;
 }
-const arcPts = (r, a0, a1, z, n = 40) => Array.from({ length: n + 1 }, (_, i) => { const a = a0 + (a1 - a0) * i / n; return V(r * Math.cos(a), r * Math.sin(a), z); });
+const arcPts = (r, a0, a1, z, n = 40) => Array.from({ length: n + 1 }, (_, i) => { const a = a0 + (a1 - a0) * i / n, rr = typeof r === 'function' ? r(a) : r; return V(rr * Math.cos(a), rr * Math.sin(a), z); });
+const smooth = (x) => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); };
 
 /* =====================================================================
    Part registry
@@ -488,7 +502,7 @@ const SYSTEMS = [
   { id: 'lights', name: 'Lights & instruments' },
   { id: 'controls', name: 'Controls' },
 ];
-const BASIS = { spec: 'From published spec', photo: 'Traced from photos, size estimated', est: 'Estimated, not clear in photos' };
+const BASIS = { spec: 'From published spec', photo: 'Measured from photos (about ±3 cm)', est: 'Estimated, not clear in photos' };
 const bike = new THREE.Group();
 const PARTS = [], byId = new Map();
 function addPart(id, sys, name, basis, desc, explode = [0, 0, 0]) {
@@ -505,115 +519,122 @@ function sideGroup(parent, explode) { const g = new THREE.Group(); parent.add(g)
    Build: bodywork
    ===================================================================== */
 const tankS = superLoft({
-  x0: 0.585, x1: 0.95, capR: 3.2, capF: 2.6,
-  yTop: (u) => 0.957 - 0.15 * Math.pow(1 - u, 2),
-  yBot: (u) => 0.668 + 0.105 * u,
-  w: (u) => 0.088 + 0.064 * Math.pow(Math.sin(Math.PI * Math.pow(u, 1.35)), 0.85),
+  x0: 0.485, x1: 0.925, capR: 3.0, capF: 4.5,
+  yTop: (u) => 0.865 - 0.11 * Math.pow(1 - u, 4),
+  yBot: (u) => 0.66 + 0.012 * u,
+  w: (u) => 0.092 + 0.045 * Math.pow(Math.sin(Math.PI * Math.pow(u, 1.6)), 0.6),
   nTop: 2.5, nBot: 3.4, nSide: 2.5,
 });
 {
   const g = addPart('tank', 'body', 'Fuel tank', 'photo', 'Painted steel tank with chrome side panels, ribbed rubber knee pads and side badges. It sits on the frame backbone, just above the cylinder head.', [0, 0.32, 0]);
   const paint = MAT.paint(), chrome = MAT.chrome();
   const elev = (phi) => (phi < Math.PI / 2 ? phi : Math.PI - phi);
-  const geo = loftGeometry(tankS, 72, 72, (u, phi) => (u > 0.035 && u < 0.905 && elev(phi) > -1.2 && elev(phi) < 0.3 ? 1 : 0));
+  const geo = loftGeometry(tankS, 80, 80, (u, phi) => (u > 0.03 && u < 0.93 && elev(phi) > -1.25 && elev(phi) < 0.88 ? 1 : 0));
   mesh(geo, [paint, chrome], g);
   const knee = MAT.textured(TEX.knee, 0.8), badge = MAT.black(), rim = MAT.chrome();
   [1, -1].forEach((side) => {
-    mesh(surfPatch(tankS, { uc: 0.255, du: 0.19, ec: -0.45, de: 0.68, side, off: 0.004, sq: 3.4 }), knee, g);
-    mesh(surfPatch(tankS, { uc: 0.71, du: 0.072, ec: -0.33, de: 0.38, side, off: 0.0035, sq: 2 }), badge, g);
-    mesh(surfPatch(tankS, { uc: 0.71, du: 0.058, ec: -0.33, de: 0.3, side, off: 0.0048, sq: 2 }), rim, g);
+    mesh(surfPatch(tankS, { uc: 0.31, du: 0.24, ec: 0.0, de: 0.6, side, off: 0.004, sq: 3.4 }), knee, g);
+    mesh(surfPatch(tankS, { uc: 0.743, du: 0.118, ec: 0.365, de: 0.47, side, off: 0.0035, sq: 2 }), badge, g);
+    mesh(surfPatch(tankS, { uc: 0.743, du: 0.098, ec: 0.365, de: 0.39, side, off: 0.0048, sq: 2 }), rim, g);
   });
-  const top = tankS(0.74, Math.PI / 2), n = tankS(0.745, Math.PI / 2).sub(tankS(0.735, Math.PI / 2));
+  const top = tankS(0.69, Math.PI / 2), n = tankS(0.695, Math.PI / 2).sub(tankS(0.685, Math.PI / 2));
   const capN = V(-n.y, n.x).normalize();
   const cap = mesh(new THREE.CylinderGeometry(0.034, 0.036, 0.016, 36), MAT.chrome(), g);
   cap.position.copy(top).addScaledVector(capN, 0.005); cap.quaternion.copy(qAlong(capN));
 }
 const seatS = superLoft({
-  x0: 0.2, x1: 0.66, capR: 7, capF: 3,
-  yTop: (u) => 0.744 + 0.024 * Math.pow(1 - u, 2.5) - 0.04 * Math.pow(u, 5),
-  yBot: (u) => 0.655 + 0.025 * u,
-  w: (u) => 0.132 - 0.03 * u * u,
-  nTop: 3.2, nBot: 12, nSide: 7,
+  x0: 0.163, x1: 0.53, capR: 6, capF: 3.2,
+  yTop: (u) => 0.776 + 0.008 * Math.pow(1 - u, 2) - 0.03 * Math.pow(u, 6),
+  yBot: () => 0.64,
+  w: (u) => 0.148 - 0.035 * u * u,
+  nTop: 3.4, nBot: 12, nSide: 7,
 });
+const SEAT_TOP = Math.min(...Array.from({ length: 41 }, (_, i) => seatS(0.1 + 0.6 * i / 40, Math.PI / 2).y));
 {
-  const g = addPart('seat', 'body', 'Rider seat', 'spec', 'Pleated vinyl saddle. Its lowest point sets the published seat height of 744 mm.', [-0.04, 0.22, 0]);
+  const g = addPart('seat', 'body', 'Rider seat', 'photo', 'Pleated vinyl saddle with stitched cross pleats. The published seat height is 744 mm; on your bike it measures about 775 mm in the photos, so the seat may be thicker than the original.', [-0.04, 0.22, 0]);
   mesh(loftGeometry(seatS, 56, 64), MAT.textured(TEX.seat, 0.5), g);
-  rbox(0.44, 0.012, 0.25, 0.005, MAT.black(), g, V(0.43, 0.652, 0));
+  rbox(0.35, 0.012, 0.27, 0.005, MAT.black(), g, V(0.345, 0.637, 0));
 }
 {
-  const g = addPart('pillion', 'body', 'Pillion seat', 'photo', 'Separate passenger pad mounted on top of the rear carrier.', [-0.12, 0.34, 0]);
-  const S = superLoft({ x0: -0.235, x1: 0.155, capR: 6, capF: 6, yTop: () => 0.818, yBot: () => 0.738, w: () => 0.118, nTop: 4, nBot: 12, nSide: 8 });
-  mesh(loftGeometry(S, 40, 56), MAT.textured(TEX.seat, 0.5), g);
+  const g = addPart('pillion', 'body', 'Pillion seat', 'photo', 'Separate box-shaped passenger pad with cross pleats, bolted on top of the rear carrier.', [-0.12, 0.34, 0]);
+  const S = superLoft({ x0: -0.222, x1: 0.131, capR: 6, capF: 6, yTop: () => 0.828, yBot: () => 0.737, w: () => 0.135, nTop: 4.5, nBot: 12, nSide: 8 });
+  mesh(loftGeometry(S, 40, 56), MAT.textured(TEX.pillion, 0.5), g);
 }
 {
-  const g = addPart('rack', 'body', 'Rear carrier', 'photo', 'Chrome tube carrier that frames the pillion pad and bolts to the rear frame rails.', [-0.22, 0.24, 0]);
-  const ch = MAT.chrome();
-  const side = (s) => [[0.215, 0.666, 0.135 * s], [0.19, 0.71, 0.135 * s], [0.168, 0.772, 0.135 * s], [0.128, 0.796, 0.135 * s], [-0.2, 0.796, 0.135 * s], [-0.268, 0.79, 0.135 * s], [-0.312, 0.768, 0.13 * s]];
-  tube([...side(-1), [-0.336, 0.752, -0.07], [-0.342, 0.748, 0], [-0.336, 0.752, 0.07], ...side(1).reverse()], 0.0095, ch, g, 260, 10);
+  const g = addPart('rack', 'body', 'Rear carrier', 'photo', 'Wide chrome luggage carrier running from behind the rider seat to past the tail light. The pillion pad sits on its cross rails.', [-0.22, 0.24, 0]);
+  const ch = MAT.chrome(), Z = 0.2, T = 0.748, L = 0.692;
+  tube([[0.148, 0.795, -0.14], [0.16, 0.768, -0.182], [0.16, T, -Z], [-0.1, T, -Z], [-0.37, T, -Z], [-0.4, T, -0.16], [-0.405, T, 0],
+        [-0.4, T, 0.16], [-0.37, T, Z], [-0.1, T, Z], [0.16, T, Z], [0.16, 0.768, 0.182], [0.148, 0.795, 0.14], [0.146, 0.802, 0]], 0.0095, ch, g, 320, 10, true);
   [-1, 1].forEach((s) => {
-    rod([0.13, 0.722, 0.125 * s], [-0.29, 0.73, 0.125 * s], 0.0085, ch, g);
-    rod([-0.29, 0.73, 0.125 * s], [-0.268, 0.79, 0.135 * s], 0.0085, ch, g);
-    rod([0.13, 0.722, 0.125 * s], [0.13, 0.664, 0.1 * s], 0.0085, ch, g);
-    rod([-0.12, 0.727, 0.125 * s], [-0.12, 0.652, 0.1 * s], 0.0085, ch, g);
+    rod([0.13, L, 0.19 * s], [-0.37, L, 0.19 * s], 0.0085, ch, g);
+    [0.13, 0.0, -0.13, -0.26, -0.37].forEach((x) => rod([x, L, 0.19 * s], [x, T, Z * s], 0.007, ch, g));
+    rod([0.12, L, 0.19 * s], [0.12, 0.628, 0.1 * s], 0.0085, ch, g);
+    rod([-0.13, L, 0.19 * s], [-0.13, 0.62, 0.1 * s], 0.0085, ch, g);
+    rbox(0.05, 0.006, 0.06, 0.003, ch, g, V(0.1, T - 0.004, 0.16 * s));
+    rbox(0.05, 0.006, 0.06, 0.003, ch, g, V(-0.19, T - 0.004, 0.16 * s));
   });
-  [-0.04, -0.2].forEach((x) => rod([x, 0.726, -0.125], [x, 0.726, 0.125], 0.0075, ch, g));
+  [-0.05, -0.17, -0.27, -0.335].forEach((x) => rod([x, T - 0.005, -Z], [x, T - 0.005, Z], 0.007, ch, g));
 }
 {
   const g = addPart('sidecovers', 'body', 'Side covers', 'photo', 'Painted panels under the seat with a chrome front section and a model badge. They close off the space between the frame rails behind the engine.');
   [1, -1].forEach((s) => {
     const sg = sideGroup(g, [0, 0, 0.28 * s]);
     const holder = new THREE.Group(); holder.scale.z = s; sg.add(holder);
-    const cover = new THREE.Shape();
-    cover.moveTo(0.55, 0.652); cover.lineTo(0.3, 0.652); cover.quadraticCurveTo(0.268, 0.652, 0.266, 0.62);
-    cover.lineTo(0.27, 0.505); cover.quadraticCurveTo(0.275, 0.462, 0.315, 0.456); cover.lineTo(0.55, 0.442); cover.lineTo(0.55, 0.652);
-    extrude(cover, 0.026, 0.008, MAT.paint(), holder, 0.118);
-    extrude(roundRectShape(0.535, 0.452, 0.612, 0.652, 0.03), 0.032, 0.008, MAT.chrome(), holder, 0.116);
-    for (let i = 0; i < 4; i++) rbox(0.05, 0.006, 0.004, 0.002, MAT.black(), holder, V(0.578, 0.5 + i * 0.03, 0.1575));
-    rbox(0.12, 0.03, 0.006, 0.004, MAT.chrome(), holder, V(0.415, 0.585, 0.155));
+    extrude(roundRectShape(0.199, 0.472, 0.49, 0.644, 0.035), 0.026, 0.008, MAT.paint(), holder, 0.118);
+    extrude(roundRectShape(0.462, 0.48, 0.53, 0.644, 0.026), 0.032, 0.008, MAT.chrome(), holder, 0.116);
+    for (let i = 0; i < 4; i++) rbox(0.042, 0.006, 0.004, 0.002, MAT.black(), holder, V(0.5, 0.52 + i * 0.03, 0.1575));
+    rbox(0.15, 0.045, 0.006, 0.006, MAT.chrome(), holder, V(0.335, 0.57, 0.155));
   });
 }
 {
   const g = addPart('chaincase', 'body', 'Chain case', 'photo', 'Fully enclosed chain case on the left side. It keeps road dirt and water off the drive chain.', [0, 0, -0.36]);
-  const hull = hullOfCircles([[0, 0.29, 0.106], [0.53, 0.34, 0.06]]);
+  const hull = hullOfCircles([[0, 0.31, 0.112], [0.07, 0.378, 0.092], [0.4, 0.4, 0.07]]);
   extrude(new THREE.Shape(hull.map(([x, y]) => new THREE.Vector2(x, y))), 0.03, 0.008, MAT.paint(), g, -0.158);
-  const cap = mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.01, 28), MAT.black(), g); cap.rotation.x = Math.PI / 2; cap.position.set(0, 0.29, -0.172);
+  const cap = mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.01, 28), MAT.black(), g); cap.rotation.x = Math.PI / 2; cap.position.set(0, R, -0.172);
 }
 {
-  const g = addPart('fmud', 'body', 'Front mudguard', 'photo', 'Deep chrome mudguard bolted to the fork sliders, so it moves up and down with the wheel.', [0.26, 0.04, 0]);
+  const g = addPart('fmud', 'body', 'Front mudguard', 'photo', 'Deep chrome mudguard with side valances that wrap down over the tyre, longest behind the fork. It is bolted to the fork sliders, so it moves with the wheel.', [0.26, 0.04, 0]);
   const grp = new THREE.Group(); grp.position.copy(FA); g.add(grp);
   const ch = MAT.chrome(THREE.DoubleSide);
-  mesh(fenderGeometry({ rBase: 0.262, crown: 0.075, width: 0.13, phi0: -14 * DEG, phi1: 150 * DEG }), ch, grp);
-  [-1, 1].forEach((s) => tube(arcPts(0.262, -14 * DEG, 150 * DEG, s * 0.065), 0.003, ch, grp, 80, 6));
+  const p0 = 52 * DEG, p1 = 205 * DEG;
+  const rIn = (ph) => 0.27 - 0.065 * smooth((ph - p0) / (150 * DEG - p0)), rOut = () => 0.335;
+  mesh(fenderGeometry({ rIn, rOut, width: 0.125, phi0: p0, phi1: p1 }), ch, grp);
+  [-1, 1].forEach((s) => tube(arcPts(rIn, p0, p1, s * 0.0625, 60), 0.003, ch, grp, 90, 6));
   [-1, 1].forEach((s) => {
-    const foot = FD.clone().multiplyScalar(0.05).setZ(s * 0.088);
-    tube([foot, V(0.2, 0.14, s * 0.082), V(0.268 * Math.cos(28 * DEG), 0.268 * Math.sin(28 * DEG), s * 0.07)], 0.0045, ch, grp, 24, 6);
-    tube([FD.clone().multiplyScalar(0.12).setZ(s * 0.088), V(-0.05, 0.27, s * 0.075)], 0.0045, ch, grp, 12, 6);
+    const a = 62 * DEG, b = 165 * DEG;
+    tube([FD.clone().multiplyScalar(0.04).setZ(s * 0.088), V(0.07, 0.15, s * 0.08), V(rIn(a) * Math.cos(a), rIn(a) * Math.sin(a), s * 0.064)], 0.0045, ch, grp, 24, 6);
+    tube([FD.clone().multiplyScalar(0.06).setZ(s * 0.088), V(rIn(b) * Math.cos(b) + 0.01, rIn(b) * Math.sin(b), s * 0.066)], 0.0045, ch, grp, 12, 6);
   });
 }
 {
-  const g = addPart('rmud', 'body', 'Rear mudguard', 'photo', 'Chrome rear mudguard. The tail light and rear number plate mount at its back end.', [-0.28, 0, 0]);
+  const g = addPart('rmud', 'body', 'Rear mudguard', 'photo', 'Chrome rear mudguard that flares out at the back, behind the number plate. The tail light and plate mount at its rear end.', [-0.28, 0, 0]);
   const grp = new THREE.Group(); grp.position.copy(RA); g.add(grp);
   const ch = MAT.chrome(THREE.DoubleSide);
-  mesh(fenderGeometry({ rBase: 0.255, crown: 0.09, width: 0.15, phi0: 48 * DEG, phi1: 196 * DEG }), ch, grp);
-  [-1, 1].forEach((s) => tube(arcPts(0.255, 48 * DEG, 196 * DEG, s * 0.075), 0.003, ch, grp, 80, 6));
+  const flare = (ph) => 0.055 * smooth((ph - 150 * DEG) / (45 * DEG));
+  const rIn = (ph) => 0.258 + flare(ph), rOut = (ph) => 0.345 + flare(ph);
+  mesh(fenderGeometry({ rIn, rOut, width: 0.15, phi0: 48 * DEG, phi1: 197 * DEG }), ch, grp);
+  [-1, 1].forEach((s) => tube(arcPts(rIn, 48 * DEG, 197 * DEG, s * 0.075, 60), 0.003, ch, grp, 90, 6));
 }
 {
-  const g = addPart('guard', 'body', 'Engine guard', 'photo', 'Chrome bar in front of the engine that protects the cylinders and exhaust pipes in a fall.', [0.24, -0.02, 0]);
+  const g = addPart('guard', 'body', 'Engine guard', 'photo', 'Wide chrome guard loops either side of the engine. They protect the cylinders, exhaust and the rider\'s legs if the bike falls.', [0.24, -0.02, 0]);
   const ch = MAT.chrome();
-  [-1, 1].forEach((s) => tube([[0.975, 0.6, 0.016 * s], [0.97, 0.605, 0.1 * s], [0.985, 0.55, 0.178 * s], [0.995, 0.42, 0.19 * s], [0.985, 0.3, 0.188 * s], [0.945, 0.225, 0.16 * s], [0.875, 0.205, 0.11 * s]], 0.0115, ch, g, 64, 12));
+  [-1, 1].forEach((s) => {
+    tube([[0.978, 0.57, 0.02 * s], [0.955, 0.573, 0.12 * s], [0.95, 0.57, 0.235 * s], [0.955, 0.545, 0.28 * s], [0.962, 0.4, 0.285 * s], [0.962, 0.27, 0.283 * s], [0.95, 0.228, 0.255 * s], [0.92, 0.212, 0.18 * s], [0.87, 0.205, 0.1 * s]], 0.0115, ch, g, 90, 12);
+    rod([0.955, 0.573, 0.135 * s], [0.958, 0.225, 0.21 * s], 0.0105, ch, g);
+  });
 }
 {
-  const g = addPart('plates', 'body', 'Number plates', 'photo', 'Front plate ahead of the headlamp and rear plate under the tail light. Left blank in the model.');
+  const g = addPart('plates', 'body', 'Number plates', 'photo', 'Wide front plate below the headlamp and rear plate under the tail light, both in chrome frames. Left blank in the model.');
   const front = sideGroup(g, [0.42, 0.05, 0]);
-  const fq = new THREE.Quaternion().setFromUnitVectors(V(1, 0, 0), FF);
-  const fp = new THREE.Group(); fp.position.copy(forkPt(0.4, 0.165)); fp.quaternion.copy(fq); front.add(fp);
-  rbox(0.006, 0.137, 0.272, 0.006, MAT.chrome(), fp, V(-0.004, 0, 0));
-  rbox(0.004, 0.125, 0.26, 0.004, MAT.plate(), fp, V(0, 0, 0));
-  rod(forkPt(0.4, 0.16), forkPt(0.4, 0.0), 0.007, MAT.black(), front);
+  const fp = new THREE.Group(); fp.position.set(1.19, 0.745, 0); fp.quaternion.setFromUnitVectors(V(1, 0, 0), V(Math.cos(12 * DEG), Math.sin(12 * DEG), 0)); front.add(fp);
+  rbox(0.006, 0.077, 0.312, 0.006, MAT.chrome(), fp, V(-0.004, 0, 0));
+  rbox(0.004, 0.065, 0.3, 0.004, MAT.plate(), fp, V(0, 0, 0));
+  rod([1.18, 0.735, 0], forkPt(0.45, -0.01), 0.007, MAT.black(), front);
   const rear = sideGroup(g, [-0.5, 0.05, 0]);
-  rbox(0.006, 0.132, 0.212, 0.006, MAT.chrome(), rear, V(-0.33, 0.47, 0));
-  rbox(0.004, 0.12, 0.2, 0.004, MAT.plate(), rear, V(-0.334, 0.47, 0));
-  rod([-0.325, 0.535, 0], [-0.305, 0.565, 0], 0.006, MAT.chrome(), rear);
+  const rp = new THREE.Group(); rp.position.set(-0.37, 0.49, 0); rp.quaternion.setFromUnitVectors(V(1, 0, 0), V(-Math.cos(8 * DEG), Math.sin(8 * DEG), 0)); rear.add(rp);
+  rbox(0.006, 0.202, 0.312, 0.006, MAT.chrome(), rp, V(-0.004, 0, 0));
+  rbox(0.004, 0.19, 0.3, 0.004, MAT.plate(), rp, V(0, 0, 0));
+  rod([-0.362, 0.59, 0], [-0.352, 0.612, 0], 0.006, MAT.chrome(), rear);
 }
 
 /* =====================================================================
@@ -622,43 +643,43 @@ const seatS = superLoft({
 {
   const g = addPart('frame', 'chassis', 'Frame', 'spec', 'Open-diamond tubular steel frame. There is no cradle under the engine: the engine itself is a stressed member that completes the structure.');
   const blk = MAT.black();
-  rod(forkPt(0.46, -0.035), forkPt(0.745, -0.035), 0.027, blk, g, 24);
-  tube([forkPt(0.63, -0.035), V(0.86, 0.8), V(0.72, 0.765), V(0.6, 0.72), V(0.52, 0.635), V(0.478, 0.5), V(0.462, 0.37)], 0.026, blk, g, 64, 14);
-  tube([forkPt(0.49, -0.035), V(0.975, 0.6), V(0.925, 0.49), V(0.885, 0.44)], 0.018, blk, g, 32, 12);
-  const rail = (s) => [[0.6, 0.716, 0.1 * s], [0.45, 0.684, 0.1 * s], [0.25, 0.667, 0.1 * s], [0.02, 0.662, 0.1 * s], [-0.12, 0.652, 0.1 * s]];
-  tube([...rail(-1), [-0.165, 0.648, -0.06], [-0.178, 0.646, 0], [-0.165, 0.648, 0.06], ...rail(1).reverse()], 0.0135, blk, g, 200, 10);
-  rod([0.6, 0.716, -0.1], [0.6, 0.716, 0.1], 0.014, blk, g);
+  rod(forkPt(0.47, -0.035), forkPt(0.76, -0.035), 0.027, blk, g, 24);
+  tube([forkPt(0.64, -0.035), V(0.86, 0.735), V(0.7, 0.705), V(0.56, 0.68), V(0.5, 0.62), V(0.47, 0.5), V(0.462, 0.37)], 0.026, blk, g, 64, 14);
+  tube([forkPt(0.49, -0.035), V(0.965, 0.585), V(0.905, 0.47), V(0.865, 0.425)], 0.018, blk, g, 32, 12);
+  const rail = (s) => [[0.52, 0.655, 0.1 * s], [0.4, 0.632, 0.1 * s], [0.2, 0.628, 0.1 * s], [0.0, 0.628, 0.1 * s], [-0.14, 0.62, 0.1 * s]];
+  tube([...rail(-1), [-0.18, 0.615, -0.06], [-0.19, 0.613, 0], [-0.18, 0.615, 0.06], ...rail(1).reverse()], 0.0135, blk, g, 200, 10);
+  rod([0.52, 0.655, -0.1], [0.52, 0.655, 0.1], 0.014, blk, g);
   [-1, 1].forEach((s) => {
-    tube([[0.468, 0.42, 0.1 * s], [0.3, 0.54, 0.1 * s], [0.14, 0.664, 0.1 * s]], 0.013, blk, g, 24, 10);
-    rod([0.135, 0.665, 0.09 * s], [0.135, 0.665, 0.172 * s], 0.0075, MAT.chrome(), g);
+    tube([[0.468, 0.42, 0.1 * s], [0.3, 0.53, 0.1 * s], [0.14, 0.627, 0.1 * s]], 0.013, blk, g, 24, 10);
+    rod([0.135, 0.645, 0.09 * s], [0.135, 0.645, 0.19 * s], 0.0075, MAT.chrome(), g);
     rbox(0.07, 0.1, 0.006, 0.004, blk, g, V(0.48, 0.4, 0.112 * s));
-    rbox(0.05, 0.06, 0.006, 0.004, blk, g, V(0.885, 0.44, 0.06 * s));
+    rbox(0.05, 0.06, 0.006, 0.004, blk, g, V(0.865, 0.425, 0.06 * s));
   });
   rod([0.455, 0.355, -0.118], [0.455, 0.355, 0.118], 0.011, MAT.chrome(), g);
 }
 {
-  const g = addPart('fork', 'chassis', 'Front fork', 'photo', 'Telescopic fork with painted upper covers and alloy lower sliders. The rake angle in the model is estimated.', [0.16, 0, 0]);
+  const g = addPart('fork', 'chassis', 'Front fork', 'photo', 'Telescopic fork with long painted upper covers and alloy lower sliders. The rake of about 25 degrees was measured from your photos.', [0.16, 0, 0]);
   const alloy = MAT.alloy(), chrome = MAT.chrome(), paint = MAT.paint(), blk = MAT.black();
   [-1, 1].forEach((s) => {
-    const z = s * 0.1;
-    lathe([[0, 0], [0.026, 0], [0.028, 0.025], [0.026, 0.07], [0.0255, 0.33], [0.022, 0.345], [0, 0.345]], forkPt(-0.035, 0, z), FD, alloy, g, 28);
-    rod(forkPt(0.33, 0, z), forkPt(0.45, 0, z), 0.0185, chrome, g, 20);
-    lathe([[0, 0], [0.029, 0], [0.031, 0.012], [0.031, 0.27], [0.027, 0.28], [0, 0.28]], forkPt(0.43, 0, z), FD, paint, g, 28);
-    rod(forkPt(0.708, 0, z), forkPt(0.728, 0, z), 0.02, chrome, g, 20);
+    const z = s * 0.09;
+    lathe([[0, 0], [0.026, 0], [0.028, 0.025], [0.026, 0.07], [0.0255, 0.255], [0.022, 0.27], [0, 0.27]], forkPt(-0.035, 0, z), FD, alloy, g, 28);
+    rod(forkPt(0.225, 0, z), forkPt(0.295, 0, z), 0.0185, chrome, g, 20);
+    lathe([[0, 0], [0.029, 0], [0.031, 0.012], [0.031, 0.43], [0.027, 0.44], [0, 0.44]], forkPt(0.28, 0, z), FD, paint, g, 28);
+    rod(forkPt(0.738, 0, z), forkPt(0.758, 0, z), 0.02, chrome, g, 20);
   });
-  rbox(0.07, 0.022, 0.262, 0.01, blk, g, forkPt(0.703, -0.012), qAlong(FD));
-  rbox(0.07, 0.03, 0.262, 0.01, blk, g, forkPt(0.47, -0.012), qAlong(FD));
-  rod(forkPt(0, 0, -0.13), forkPt(0, 0, 0.13), 0.009, MAT.chrome(), g);
+  rbox(0.07, 0.022, 0.24, 0.01, blk, g, forkPt(0.735, -0.012), qAlong(FD));
+  rbox(0.07, 0.03, 0.24, 0.01, blk, g, forkPt(0.5, -0.012), qAlong(FD));
+  rod(forkPt(0, 0, -0.12), forkPt(0, 0, 0.12), 0.009, MAT.chrome(), g);
 }
 {
   const g = addPart('swingarm', 'chassis', 'Swingarm', 'est', 'Pivots just behind the engine and carries the rear axle. Chain tension is set by sliding the axle along the arm ends.', [-0.1, -0.08, 0]);
   const blk = MAT.black();
   [-1, 1].forEach((s) => {
-    const a = V(0.455, 0.355, 0.095 * s), b = V(-0.02, 0.288, 0.095 * s), d = b.clone().sub(a);
+    const a = V(0.455, 0.355, 0.095 * s), b = V(-0.02, R - 0.002, 0.095 * s), d = b.clone().sub(a);
     rbox(0.034, d.length(), 0.022, 0.007, blk, g, a.clone().addScaledVector(d, 0.5), qAlong(d));
-    rbox(0.05, 0.03, 0.026, 0.006, MAT.chrome(), g, V(0.0, 0.29, 0.097 * s));
+    rbox(0.05, 0.03, 0.026, 0.006, MAT.chrome(), g, V(0.0, R, 0.097 * s));
   });
-  rod([0.4, 0.347, -0.095], [0.4, 0.347, 0.095], 0.013, blk, g);
+  rod([0.4, 0.349, -0.095], [0.4, 0.349, 0.095], 0.013, blk, g);
   rod([0.455, 0.355, -0.108], [0.455, 0.355, 0.108], 0.021, blk, g, 20);
 }
 function shock(parent, lower, upper, paint, chrome, blk) {
@@ -676,7 +697,8 @@ function shock(parent, lower, upper, paint, chrome, blk) {
   const g = addPart('shocks', 'chassis', 'Rear shocks', 'photo', 'Twin shock absorbers with painted upper covers and chrome lower bodies, running from the swingarm to the rear frame.');
   [-1, 1].forEach((s) => {
     const sg = sideGroup(g, [0, 0, 0.22 * s]);
-    shock(sg, V(0.1, 0.305, 0.18 * s), V(0.135, 0.665, 0.165 * s), MAT.paint(), MAT.chrome(), MAT.black());
+    shock(sg, V(0.035, 0.335, 0.2 * s), V(0.135, 0.645, 0.185 * s), MAT.paint(), MAT.chrome(), MAT.black());
+    rod([0.035, 0.335, 0.105 * s], [0.035, 0.335, 0.19 * s], 0.008, MAT.black(), sg);
   });
 }
 {
@@ -692,16 +714,16 @@ function shock(parent, lower, upper, paint, chrome, blk) {
   rod([0.56, 0.24, -0.128], [0.33, 0.212, -0.155], 0.011, blk, g);
 }
 {
-  const g = addPart('pegs', 'chassis', 'Footrests', 'photo', 'Ribbed rubber rider footrests on a bar under the engine, and pillion footrests on brackets above the silencers.');
+  const g = addPart('pegs', 'chassis', 'Footrests', 'photo', 'Ribbed rubber rider footrests on a bar under the engine, and pillion footrests on brackets just above the silencers.');
   const blk = MAT.black(), rub = MAT.rubber();
-  rod([0.52, 0.27, -0.165], [0.52, 0.27, 0.165], 0.012, blk, g);
+  rod([0.5, 0.262, -0.165], [0.5, 0.262, 0.165], 0.012, blk, g);
   [-1, 1].forEach((s) => {
     const sg = sideGroup(g, [0, 0, 0.16 * s]);
-    rod([0.52, 0.27, 0.16 * s], [0.52, 0.27, 0.275 * s], 0.02, rub, sg, 18);
-    for (let i = 0; i < 5; i++) { const t = mesh(new THREE.TorusGeometry(0.0205, 0.0035, 6, 18), rub, sg); t.position.set(0.52, 0.27, (0.175 + i * 0.022) * s); }
-    rod([0.25, 0.6, 0.1 * s], [0.17, 0.355, 0.19 * s], 0.01, blk, sg);
-    rod([0.17, 0.355, 0.185 * s], [0.17, 0.355, 0.27 * s], 0.017, rub, sg, 16);
-    for (let i = 0; i < 4; i++) { const t = mesh(new THREE.TorusGeometry(0.0175, 0.003, 6, 16), rub, sg); t.position.set(0.17, 0.355, (0.2 + i * 0.02) * s); }
+    rod([0.5, 0.262, 0.16 * s], [0.5, 0.262, 0.275 * s], 0.02, rub, sg, 18);
+    for (let i = 0; i < 5; i++) { const t = mesh(new THREE.TorusGeometry(0.0205, 0.0035, 6, 18), rub, sg); t.position.set(0.5, 0.262, (0.175 + i * 0.022) * s); }
+    rod([0.26, 0.56, 0.1 * s], [0.19, 0.33, 0.19 * s], 0.01, blk, sg);
+    rod([0.19, 0.33, 0.185 * s], [0.19, 0.33, 0.27 * s], 0.017, rub, sg, 16);
+    for (let i = 0; i < 4; i++) { const t = mesh(new THREE.TorusGeometry(0.0175, 0.003, 6, 16), rub, sg); t.position.set(0.19, 0.33, (0.2 + i * 0.02) * s); }
   });
 }
 
@@ -710,20 +732,20 @@ function shock(parent, lower, upper, paint, chrome, blk) {
    ===================================================================== */
 function wheel(parent, brakeSide) {
   const chrome = MAT.chrome(), rub = MAT.rubber(), alloy = MAT.alloy();
-  mesh(new THREE.TorusGeometry(R - 0.0375, 0.0375, 28, 128), rub, parent);
+  mesh(new THREE.TorusGeometry(R - 0.036, 0.036, 28, 128), rub, parent);
   [-0.013, 0, 0.013].forEach((z) => { const t = mesh(new THREE.TorusGeometry(R - 0.0005, 0.0018, 4, 128), MAT.black(), parent, false); t.position.z = z; });
-  const band = new THREE.CylinderGeometry(0.216, 0.216, 0.046, 96, 1, true); band.rotateX(Math.PI / 2);
+  const band = new THREE.CylinderGeometry(RIM, RIM, 0.046, 96, 1, true); band.rotateX(Math.PI / 2);
   mesh(band, MAT.chrome(THREE.DoubleSide), parent);
-  [-0.023, 0.023].forEach((z) => { const t = mesh(new THREE.TorusGeometry(0.2205, 0.0045, 8, 128), chrome, parent); t.position.z = z; });
+  [-0.023, 0.023].forEach((z) => { const t = mesh(new THREE.TorusGeometry(RIM + 0.0045, 0.0045, 8, 128), chrome, parent); t.position.z = z; });
   const s = brakeSide;
-  lathe([[0.012, 0], [0.05, 0], [0.085, 0.005], [0.088, 0.022], [0.06, 0.025], [0.058, 0.032], [0.044, 0.038], [0.044, 0.09], [0.056, 0.094], [0.056, 0.1], [0.03, 0.112], [0.012, 0.12]], V(0, 0, s * 0.062), V(0, 0, -s), alloy, parent, 40);
+  lathe([[0.012, 0], [0.05, 0], [0.085, 0.005], [0.088, 0.02], [0.06, 0.023], [0.058, 0.03], [0.044, 0.035], [0.044, 0.077], [0.056, 0.081], [0.056, 0.088], [0.03, 0.1], [0.012, 0.105]], V(0, 0, s * 0.055), V(0, 0, -s), alloy, parent, 40);
   const inst = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.0019, 0.0019, 1, 5), MAT.chrome(), 36);
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
   for (let i = 0; i < 36; i++) {
     const fl = i % 2, k = Math.floor(i / 2);
-    const hz = fl ? s * 0.034 : -s * 0.035, hr = fl ? 0.057 : 0.055;
+    const hz = fl ? s * 0.0285 : -s * 0.0295, hr = fl ? 0.057 : 0.055;
     const ha = k * (2 * Math.PI / 18) + (fl ? Math.PI / 18 : 0), ra = ha + (k % 2 ? 0.95 : -0.95);
-    const a = V(hr * Math.cos(ha), hr * Math.sin(ha), hz), b = V(0.212 * Math.cos(ra), 0.212 * Math.sin(ra), Math.sign(hz) * 0.007);
+    const a = V(hr * Math.cos(ha), hr * Math.sin(ha), hz), b = V((RIM - 0.004) * Math.cos(ra), (RIM - 0.004) * Math.sin(ra), Math.sign(hz) * 0.007);
     const d = b.clone().sub(a);
     q.setFromUnitVectors(Y_UP, d.clone().normalize()); sc.set(1, d.length(), 1);
     m4.compose(a.clone().addScaledVector(d, 0.5), q, sc); inst.setMatrixAt(i, m4);
@@ -733,36 +755,36 @@ function wheel(parent, brakeSide) {
   [-1, 1].forEach((z) => { const n = mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.012, 6), chrome, parent); n.rotation.x = Math.PI / 2; n.position.z = z * 0.106; });
 }
 {
-  const g = addPart('fwheel', 'wheels', 'Front wheel', 'spec', 'Wire-spoked chrome rim with a 3.00-17 tyre, as published. Check the size moulded on your tyre sidewall.', [0.34, 0, 0]);
+  const g = addPart('fwheel', 'wheels', 'Front wheel', 'photo', 'Wire-spoked chrome rim with a ribbed tyre. Modelled as an 18-inch wheel because that matches your photos; the published spec says 3.00-17, so check the size moulded on the sidewall.', [0.34, 0, 0]);
   const grp = new THREE.Group(); grp.position.copy(FA); g.add(grp); wheel(grp, -1);
 }
 {
   const g = addPart('fbrake', 'wheels', 'Front drum brake', 'photo', 'Expanding-shoe drum brake on the left of the front hub, worked by cable from the right handlebar lever.', [0.34, 0, -0.18]);
   const grp = new THREE.Group(); grp.position.copy(FA); g.add(grp);
-  const plate = mesh(new THREE.CylinderGeometry(0.083, 0.086, 0.012, 48), MAT.casting(), grp); plate.rotation.x = Math.PI / 2; plate.position.z = -0.07;
-  const ring = mesh(new THREE.TorusGeometry(0.06, 0.004, 8, 48), MAT.alloy(), grp); ring.position.z = -0.077;
+  const plate = mesh(new THREE.CylinderGeometry(0.083, 0.086, 0.01, 48), MAT.casting(), grp); plate.rotation.x = Math.PI / 2; plate.position.z = -0.06;
+  const ring = mesh(new THREE.TorusGeometry(0.06, 0.004, 8, 48), MAT.alloy(), grp); ring.position.z = -0.066;
   rod([-0.035, 0.062, -0.08], [-0.07, 0.112, -0.086], 0.006, MAT.alloy(), grp);
   rod([0.0, -0.05, -0.078], [-0.04, -0.07, -0.088], 0.008, MAT.casting(), grp);
 }
 {
-  const g = addPart('rwheel', 'wheels', 'Rear wheel', 'spec', 'Wire-spoked chrome rim with a 3.00-17 tyre, as published.', [-0.36, 0, 0]);
+  const g = addPart('rwheel', 'wheels', 'Rear wheel', 'photo', 'Wire-spoked chrome rim, modelled as 18-inch to match your photos (published spec: 3.00-17).', [-0.36, 0, 0]);
   const grp = new THREE.Group(); grp.position.copy(RA); g.add(grp); wheel(grp, 1);
 }
 {
   const g = addPart('rbrake', 'wheels', 'Rear drum brake', 'est', 'Expanding-shoe drum brake on the right of the rear hub, worked by a rod from the right foot pedal.', [-0.36, 0, 0.18]);
   const grp = new THREE.Group(); grp.position.copy(RA); g.add(grp);
-  const plate = mesh(new THREE.CylinderGeometry(0.083, 0.086, 0.012, 48), MAT.casting(), grp); plate.rotation.x = Math.PI / 2; plate.position.z = 0.07;
-  const ring = mesh(new THREE.TorusGeometry(0.06, 0.004, 8, 48), MAT.alloy(), grp); ring.position.z = 0.077;
+  const plate = mesh(new THREE.CylinderGeometry(0.083, 0.086, 0.01, 48), MAT.casting(), grp); plate.rotation.x = Math.PI / 2; plate.position.z = 0.06;
+  const ring = mesh(new THREE.TorusGeometry(0.06, 0.004, 8, 48), MAT.alloy(), grp); ring.position.z = 0.066;
   rod([0.055, -0.035, 0.084], [0.07, -0.085, 0.09], 0.006, MAT.alloy(), grp);
   rod([0.05, 0.05, 0.084], [0.25, 0.035, 0.1], 0.006, MAT.black(), grp);
-  rod([0.07, -0.08, 0.09], [0.49, -0.07, 0.165], 0.0038, MAT.chrome(), grp);
+  rod([0.07, -0.08, 0.09], [0.485, -0.095, 0.165], 0.0038, MAT.chrome(), grp);
 }
 {
   const g = addPart('drive', 'wheels', 'Chain and sprockets', 'est', 'Final drive from the gearbox sprocket to the rear wheel sprocket. It sits inside the chain case; hide the case to see it.', [-0.05, 0, -0.22]);
   const blk = MAT.black();
-  const rs = mesh(new THREE.CylinderGeometry(0.095, 0.095, 0.005, 40), blk, g); rs.rotation.x = Math.PI / 2; rs.position.set(0, 0.29, -0.112);
+  const rs = mesh(new THREE.CylinderGeometry(0.095, 0.095, 0.005, 40), blk, g); rs.rotation.x = Math.PI / 2; rs.position.set(0, R, -0.112);
   const fs = mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.006, 24), blk, g); fs.rotation.x = Math.PI / 2; fs.position.set(0.53, 0.34, -0.112);
-  const hull = hullOfCircles([[0, 0.29, 0.099], [0.53, 0.34, 0.044]], 48);
+  const hull = hullOfCircles([[0, R, 0.099], [0.53, 0.34, 0.044]], 48);
   tube(hull.map(([x, y]) => V(x, y, -0.112)), 0.0055, MAT.chain(), g, 360, 6, true);
 }
 
@@ -775,30 +797,30 @@ const cylWorld = (lx, ly, z = 0) => CYL_BASE.clone().addScaledVector(CYL_A, ly).
   const g = addPart('cylinders', 'engine', 'Cylinders and head', 'photo', '194 cc air-cooled four-stroke OHC parallel twin, bore and stroke 53 × 44 mm. Finned barrel and head, leaning forward.', [0.04, 0.03, 0]);
   const cast = MAT.casting(), pol = MAT.alloy(), blk = MAT.black();
   const cyl = new THREE.Group(); cyl.position.copy(CYL_BASE); cyl.rotation.z = -CYL_TILT; g.add(cyl);
-  mesh(new RoundedBoxGeometry(0.088, 0.13, 0.215, 2, 0.01), cast, cyl).position.y = 0.065;
-  for (let k = 0; k < 11; k++) { const f = mesh(new THREE.BoxGeometry(0.12, 0.0042, 0.238), cast, cyl); f.position.y = 0.008 + k * 0.0118; }
-  mesh(new RoundedBoxGeometry(0.1, 0.09, 0.228, 2, 0.01), cast, cyl).position.y = 0.175;
-  for (let k = 0; k < 7; k++) { const f = mesh(new THREE.BoxGeometry(0.142, 0.0042, 0.262), cast, cyl); f.position.y = 0.137 + k * 0.0105; }
-  mesh(new RoundedBoxGeometry(0.125, 0.038, 0.245, 3, 0.015), pol, cyl).position.y = 0.235;
+  mesh(new RoundedBoxGeometry(0.095, 0.1, 0.215, 2, 0.01), cast, cyl).position.y = 0.05;
+  for (let k = 0; k < 8; k++) { const f = mesh(new THREE.BoxGeometry(0.135, 0.0042, 0.238), cast, cyl); f.position.y = 0.008 + k * 0.0118; }
+  mesh(new RoundedBoxGeometry(0.11, 0.07, 0.228, 2, 0.01), cast, cyl).position.y = 0.137;
+  for (let k = 0; k < 6; k++) { const f = mesh(new THREE.BoxGeometry(0.175, 0.0042, 0.262), cast, cyl); f.position.y = 0.106 + k * 0.0108; }
+  mesh(new RoundedBoxGeometry(0.14, 0.03, 0.245, 3, 0.012), pol, cyl).position.y = 0.183;
   [-1, 1].forEach((s) => {
-    const c = mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.012, 24), pol, cyl); c.rotation.x = Math.PI / 2; c.position.set(0, 0.225, s * 0.128);
-    rod(V(0.06, 0.185, s * 0.07), V(0.1, 0.208, s * 0.076), 0.011, blk, cyl);
-    tube([V(0.1, 0.208, s * 0.076), V(0.115, 0.26, s * 0.07), V(0.04, 0.3, s * 0.06)], 0.0035, blk, cyl, 16, 6);
-    rod(V(0.06, 0.15, s * 0.065), V(0.09, 0.15, s * 0.065), 0.025, pol, cyl, 20);
+    const c = mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.012, 24), pol, cyl); c.rotation.x = Math.PI / 2; c.position.set(0, 0.17, s * 0.128);
+    rod(V(0.07, 0.135, s * 0.07), V(0.11, 0.155, s * 0.076), 0.011, blk, cyl);
+    tube([V(0.11, 0.155, s * 0.076), V(0.125, 0.2, s * 0.07), V(0.05, 0.24, s * 0.06)], 0.0035, blk, cyl, 16, 6);
+    rod(V(0.07, 0.12, s * 0.065), V(0.1, 0.12, s * 0.065), 0.025, pol, cyl, 20);
   });
 }
 {
   const g = addPart('crankcase', 'engine', 'Crankcase and covers', 'photo', 'Holds the crankshaft and the 4-speed constant-mesh gearbox. Round cover on the left, larger cover on the right.', [0, -0.12, 0]);
   const cast = MAT.casting(), pol = MAT.alloy();
-  const pts = [[0.505, 0.4], [0.545, 0.44], [0.64, 0.448], [0.76, 0.45], [0.83, 0.44], [0.86, 0.395], [0.866, 0.33], [0.848, 0.27], [0.8, 0.232], [0.7, 0.22], [0.58, 0.222], [0.522, 0.248], [0.5, 0.32]];
+  const pts = [[0.505, 0.39], [0.545, 0.425], [0.64, 0.432], [0.76, 0.434], [0.83, 0.425], [0.86, 0.385], [0.866, 0.33], [0.848, 0.27], [0.8, 0.232], [0.7, 0.22], [0.58, 0.222], [0.522, 0.248], [0.5, 0.32]];
   const shape = new THREE.Shape(); shape.moveTo(0.5, 0.32);
   shape.splineThru([...pts.map(([x, y]) => new THREE.Vector2(x, y))]);
   extrude(shape, 0.22, 0.012, cast, g, -0.11);
-  lathe([[0, 0], [0.086, 0], [0.086, 0.008], [0.079, 0.022], [0.062, 0.028], [0, 0.03]], V(0.665, 0.34, -0.12), V(0, 0, -1), pol, g, 48);
-  lathe([[0, 0], [0.095, 0], [0.095, 0.01], [0.086, 0.028], [0.062, 0.036], [0, 0.038]], V(0.715, 0.345, 0.12), V(0, 0, 1), MAT.alloy(), g, 48);
-  rbox(0.1, 0.12, 0.03, 0.012, cast, g, V(0.555, 0.335, -0.134));
-  rod([0.585, 0.4, 0.12], [0.585, 0.4, 0.152], 0.016, pol, g);
-  rod([0.62, 0.44, 0.11], [0.62, 0.47, 0.11], 0.012, MAT.black(), g);
+  lathe([[0, 0], [0.084, 0], [0.084, 0.008], [0.077, 0.022], [0.06, 0.028], [0, 0.03]], V(0.655, 0.35, -0.12), V(0, 0, -1), pol, g, 48);
+  lathe([[0, 0], [0.092, 0], [0.092, 0.01], [0.084, 0.028], [0.06, 0.036], [0, 0.038]], V(0.71, 0.338, 0.12), V(0, 0, 1), MAT.alloy(), g, 48);
+  rbox(0.1, 0.12, 0.03, 0.012, cast, g, V(0.545, 0.33, -0.134));
+  rod([0.585, 0.38, 0.12], [0.585, 0.38, 0.152], 0.016, pol, g);
+  rod([0.62, 0.425, 0.11], [0.62, 0.455, 0.11], 0.012, MAT.black(), g);
 }
 
 /* =====================================================================
@@ -808,25 +830,25 @@ const cylWorld = (lx, ly, z = 0) => CYL_BASE.clone().addScaledVector(CYL_A, ly).
   const g = addPart('headers', 'exhaust', 'Exhaust headers', 'photo', 'One pipe per cylinder. They drop in front of the engine and run back underneath it.');
   [-1, 1].forEach((s) => {
     const sg = sideGroup(g, [0, -0.04, 0.26 * s]), ch = MAT.chrome();
-    const p0 = cylWorld(0.09, 0.15, s * 0.065);
-    tube([p0, [0.9, 0.52, 0.072 * s], [0.928, 0.45, 0.085 * s], [0.935, 0.37, 0.1 * s], [0.912, 0.285, 0.122 * s], [0.855, 0.214, 0.152 * s], [0.75, 0.202, 0.178 * s], [0.62, 0.207, 0.203 * s], [0.5, 0.22, 0.215 * s]], 0.019, ch, sg, 96, 14);
+    const p0 = cylWorld(0.1, 0.12, s * 0.065);
+    tube([p0, [0.845, 0.5, 0.072 * s], [0.89, 0.43, 0.085 * s], [0.905, 0.34, 0.1 * s], [0.888, 0.262, 0.125 * s], [0.83, 0.215, 0.155 * s], [0.73, 0.205, 0.18 * s], [0.62, 0.215, 0.205 * s], [0.53, 0.262, 0.215 * s]], 0.019, ch, sg, 96, 14);
     const fl = mesh(new THREE.TorusGeometry(0.024, 0.006, 8, 24), ch, sg); fl.position.copy(p0); fl.quaternion.setFromUnitVectors(V(0, 0, 1), CYL_P);
   });
 }
 {
-  const g = addPart('silencers', 'exhaust', 'Silencers', 'photo', 'Twin chrome silencers, one each side, with tapered tail cones.');
+  const g = addPart('silencers', 'exhaust', 'Silencers', 'photo', 'Twin long chrome silencers, one each side, running nearly level and ending about 24 cm behind the rear axle.');
   [-1, 1].forEach((s) => {
     const sg = sideGroup(g, [0, -0.04, 0.34 * s]);
-    const F = V(0.5, 0.22, 0.215 * s), B = V(-0.125, 0.262, 0.215 * s), d = B.clone().sub(F), L = d.length();
+    const F = V(0.53, 0.262, 0.215 * s), B = V(-0.245, 0.268, 0.215 * s), d = B.clone().sub(F), L = d.length();
     lathe([[0.019, 0], [0.021, 0.03], [0.04, 0.1], [0.043, 0.12], [0.043, L - 0.13], [0.04, L - 0.09], [0.03, L - 0.035], [0.028, L - 0.03], [0.013, L - 0.025], [0.012, L], [0, L]], F, d, MAT.chrome(), sg, 40);
-    rod([0.17, 0.33, 0.2 * s], [0.17, 0.28, 0.212 * s], 0.008, MAT.black(), sg);
+    rod([0.19, 0.33, 0.2 * s], [0.19, 0.3, 0.212 * s], 0.008, MAT.black(), sg);
   });
 }
 
 /* =====================================================================
    Build: lights & instruments
    ===================================================================== */
-const HL = forkPt(0.6, 0.13);
+const HL = forkPt(0.618, 0.138);
 function indicator(parent, center, dir, stalkFrom, chrome, amber) {
   const d = dir.clone().normalize();
   lathe([[0, 0], [0.02, 0], [0.033, 0.022], [0.036, 0.032]], center.clone().addScaledVector(d, -0.032), d, chrome, parent, 24);
@@ -836,71 +858,75 @@ function indicator(parent, center, dir, stalkFrom, chrome, amber) {
 }
 {
   const g = addPart('headlamp', 'lights', 'Headlamp', 'photo', 'Round headlamp with a fluted lens and chrome rim, in a painted shell carried between the fork covers.', [0.36, 0.06, 0]);
-  lathe([[0, 0], [0.05, 0], [0.074, 0.035], [0.088, 0.08], [0.094, 0.115], [0.094, 0.125]], HL.clone().add(V(-0.125, 0)), V(1, 0), MAT.paint(), g, 48);
-  const rim = mesh(new THREE.TorusGeometry(0.091, 0.008, 12, 64), MAT.chrome(), g); rim.rotation.y = Math.PI / 2; rim.position.copy(HL).add(V(0.002, 0));
-  const lg = new THREE.CircleGeometry(0.087, 48), pa = lg.attributes.position;
-  for (let i = 0; i < pa.count; i++) { const r = Math.hypot(pa.getX(i), pa.getY(i)) / 0.087; pa.setZ(i, 0.012 * (1 - r * r)); }
+  lathe([[0, 0], [0.046, 0], [0.068, 0.033], [0.081, 0.075], [0.086, 0.108], [0.086, 0.118]], HL.clone().add(V(-0.118, 0)), V(1, 0), MAT.paint(), g, 48);
+  const rim = mesh(new THREE.TorusGeometry(0.083, 0.0075, 12, 64), MAT.chrome(), g); rim.rotation.y = Math.PI / 2; rim.position.copy(HL).add(V(0.002, 0));
+  const lg = new THREE.CircleGeometry(0.079, 48), pa = lg.attributes.position;
+  for (let i = 0; i < pa.count; i++) { const r = Math.hypot(pa.getX(i), pa.getY(i)) / 0.079; pa.setZ(i, 0.011 * (1 - r * r)); }
   lg.computeVertexNormals(); lg.rotateY(Math.PI / 2);
   const lens = mesh(lg, new THREE.MeshPhysicalMaterial({ map: TEX.lens, roughness: 0.12, metalness: 0.15, clearcoat: 1 }), g); lens.position.copy(HL).add(V(0.001, 0));
-  [-1, 1].forEach((s) => rod(forkPt(0.6, 0.0, s * 0.1), HL.clone().add(V(-0.06, 0, s * 0.082)), 0.009, MAT.paint(), g));
+  [-1, 1].forEach((s) => rod(forkPt(0.618, 0.0, s * 0.09), HL.clone().add(V(-0.06, 0, s * 0.075)), 0.009, MAT.paint(), g));
 }
 {
   const g = addPart('speedo', 'lights', 'Speedometer', 'photo', 'Square instrument housing above the headlamp.', [0.16, 0.28, 0]);
-  const sp = new THREE.Group(); sp.position.copy(forkPt(0.76, 0.075)); sp.rotation.z = 0.5; g.add(sp);
+  const sp = new THREE.Group(); sp.position.copy(forkPt(0.755, 0.07)); sp.rotation.z = 0.5; g.add(sp);
   rbox(0.1, 0.06, 0.15, 0.012, MAT.black(), sp);
   rbox(0.104, 0.012, 0.154, 0.005, MAT.chrome(), sp, V(0, 0.026, 0));
   const face = new THREE.PlaneGeometry(0.13, 0.084); face.rotateX(-Math.PI / 2); face.rotateY(-Math.PI / 2);
   mesh(face, new THREE.MeshStandardMaterial({ map: TEX.dial, roughness: 0.35, metalness: 0 }), sp, false).position.y = 0.0325;
-  rod(forkPt(0.715, -0.01), forkPt(0.74, 0.06), 0.008, MAT.black(), g);
+  rod(forkPt(0.735, -0.01), forkPt(0.755, 0.055), 0.008, MAT.black(), g);
 }
 {
   const g = addPart('findic', 'lights', 'Front indicators', 'photo', 'Amber turn signals on stalks either side of the headlamp.');
   [-1, 1].forEach((s) => {
     const sg = sideGroup(g, [0.36, 0.06, 0.12 * s]);
-    indicator(sg, forkPt(0.63, 0.07, s * 0.205), V(1, 0), forkPt(0.63, 0.0, s * 0.128), MAT.chrome(), MAT.amber());
+    indicator(sg, V(1.1, 0.878, s * 0.158), V(1, 0), forkPt(0.638, 0.0, s * 0.115), MAT.chrome(), MAT.amber());
   });
 }
 {
-  const g = addPart('rindic', 'lights', 'Rear indicators', 'photo', 'Amber turn signals on stalks at the back of the bike.');
+  const g = addPart('rindic', 'lights', 'Rear indicators', 'photo', 'Amber turn signals on short stalks either side of the rear frame, below the carrier.');
   [-1, 1].forEach((s) => {
     const sg = sideGroup(g, [-0.5, 0.1, 0.1 * s]);
-    indicator(sg, V(-0.29, 0.645, 0.18 * s), V(-1, 0), V(-0.25, 0.645, 0.085 * s), MAT.chrome(), MAT.amber());
+    indicator(sg, V(-0.2, 0.62, 0.15 * s), V(-1, 0), V(-0.17, 0.62, 0.085 * s), MAT.chrome(), MAT.amber());
   });
 }
 {
-  const g = addPart('tail', 'lights', 'Tail light', 'photo', 'Red tail and stop lamp in a chrome housing at the back of the rear mudguard.', [-0.5, 0.12, 0]);
-  rbox(0.07, 0.07, 0.13, 0.012, MAT.chrome(), g, V(-0.305, 0.6, 0));
-  rbox(0.014, 0.054, 0.112, 0.006, MAT.red(), g, V(-0.342, 0.6, 0));
-  rod([-0.262, 0.51, 0], [-0.3, 0.566, 0], 0.008, MAT.chrome(), g);
+  const g = addPart('tail', 'lights', 'Tail light', 'photo', 'Large red tail and stop lamp with a round centre lens, hung under the back of the carrier above the number plate.', [-0.5, 0.12, 0]);
+  rbox(0.055, 0.12, 0.21, 0.014, MAT.chrome(), g, V(-0.35, 0.672, 0));
+  rbox(0.016, 0.11, 0.2, 0.012, MAT.red(), g, V(-0.382, 0.672, 0));
+  const bulge = mesh(new THREE.CylinderGeometry(0.034, 0.036, 0.02, 32), MAT.red(), g); bulge.rotation.z = Math.PI / 2; bulge.position.set(-0.394, 0.66, 0);
+  [-1, 1].forEach((s) => rod([-0.39, 0.748, 0.07 * s], [-0.35, 0.732, 0.07 * s], 0.006, MAT.chrome(), g));
 }
 {
-  const g = addPart('horn', 'lights', 'Horn', 'photo', 'Round horn beside the front number plate.', [0.36, -0.02, 0.14]);
-  const c = forkPt(0.36, 0.13, 0.172);
-  lathe([[0, 0], [0.042, 0], [0.042, 0.012], [0.036, 0.022], [0, 0.024]], c, FF, MAT.chrome(), g, 36);
-  rod(c, forkPt(0.36, 0.0, 0.1), 0.006, MAT.black(), g);
+  const g = addPart('horn', 'lights', 'Horns', 'photo', 'Two round horns, one at each end of the front number plate.', [0.36, -0.02, 0]);
+  [-1, 1].forEach((s) => {
+    const sg = sideGroup(g, [0, 0, 0.12 * s]);
+    const c = V(1.182, 0.745, s * 0.172);
+    lathe([[0, 0], [0.03, 0], [0.03, 0.01], [0.026, 0.019], [0, 0.021]], c, V(Math.cos(12 * DEG), Math.sin(12 * DEG), 0), MAT.chrome(), sg, 36);
+    rod(c, V(1.176, 0.742, s * 0.14), 0.006, MAT.black(), sg);
+  });
 }
 
 /* =====================================================================
    Build: controls
    ===================================================================== */
-const BAR_R = [[0.935, 0.935, 0.0], [0.935, 0.935, 0.05], [0.93, 0.99, 0.085], [0.9, 1.07, 0.13], [0.86, 1.1, 0.2], [0.82, 1.09, 0.27], [0.785, 1.08, 0.33], [0.745, 1.07, 0.405]];
+const BAR_R = [[0.945, 0.975, 0.0], [0.945, 0.975, 0.05], [0.94, 1.03, 0.085], [0.91, 1.09, 0.13], [0.86, 1.105, 0.2], [0.8, 1.078, 0.27], [0.76, 1.052, 0.32], [0.712, 1.026, 0.405]];
 {
   const g = addPart('bars', 'controls', 'Handlebar', 'photo', 'High-rise chrome handlebar clamped to the top yoke, with rubber grips. In this model the top of the bars matches the published 1,105 mm overall height.', [0.04, 0.3, 0]);
   const half = BAR_R.slice(1);
   tube([...half.map((p) => [p[0], p[1], -p[2]]).reverse(), ...half], 0.0112, MAT.chrome(), g, 200, 12);
   const rub = MAT.rubber(), blk = MAT.black();
   [-1, 1].forEach((s) => {
-    rod([0.79, 1.081, 0.32 * s], [0.743, 1.07, 0.41 * s], 0.0165, rub, g, 18);
-    rbox(0.05, 0.042, 0.04, 0.01, blk, g, V(0.8, 1.085, 0.3 * s));
-    rbox(0.03, 0.03, 0.05, 0.006, blk, g, V(0.935, 0.95, 0.045 * s));
+    rod([0.765, 1.055, 0.315 * s], [0.708, 1.024, 0.412 * s], 0.0165, rub, g, 18);
+    rbox(0.05, 0.042, 0.04, 0.01, blk, g, V(0.78, 1.064, 0.295 * s));
+    rbox(0.03, 0.03, 0.05, 0.006, blk, g, V(0.945, 0.99, 0.045 * s));
   });
 }
 {
   const g = addPart('levers', 'controls', 'Hand levers', 'photo', 'Clutch lever on the left, front brake lever on the right.');
   [-1, 1].forEach((s) => {
     const sg = sideGroup(g, [0.04, 0.3, 0.12 * s]);
-    rbox(0.03, 0.026, 0.03, 0.006, MAT.alloy(), sg, V(0.818, 1.088, 0.282 * s));
-    tube([[0.82, 1.083, 0.285 * s], [0.852, 1.075, 0.305 * s], [0.838, 1.066, 0.36 * s], [0.805, 1.06, 0.418 * s]], 0.0058, MAT.chrome(), sg, 32, 8);
+    rbox(0.03, 0.026, 0.03, 0.006, MAT.alloy(), sg, V(0.8, 1.075, 0.275 * s));
+    tube([[0.802, 1.071, 0.28 * s], [0.835, 1.06, 0.3 * s], [0.81, 1.046, 0.36 * s], [0.77, 1.034, 0.42 * s]], 0.0058, MAT.chrome(), sg, 32, 8);
   });
 }
 {
@@ -908,8 +934,8 @@ const BAR_R = [[0.935, 0.935, 0.0], [0.935, 0.935, 0.05], [0.93, 0.99, 0.085], [
   [-1, 1].forEach((s) => {
     const sg = sideGroup(g, [0.04, 0.42, 0.14 * s]);
     const ch = MAT.chrome();
-    tube([[0.822, 1.095, 0.275 * s], [0.83, 1.17, 0.298 * s], [0.846, 1.225, 0.318 * s]], 0.0055, ch, sg, 24, 8);
-    const mc = V(0.852, 1.258, 0.33 * s), nd = V(-1, 0, -0.18 * s).normalize();
+    tube([[0.8, 1.08, 0.27 * s], [0.796, 1.14, 0.31 * s], [0.792, 1.18, 0.338 * s]], 0.0055, ch, sg, 24, 8);
+    const mc = V(0.792, 1.225, 0.35 * s), nd = V(-1, 0, -0.18 * s).normalize();
     const head = mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.016, 40), ch, sg); head.position.copy(mc); head.quaternion.copy(qAlong(nd));
     const glass = mesh(new THREE.CircleGeometry(0.046, 40), MAT.glass(), sg); glass.position.copy(mc).addScaledVector(nd, 0.0085); glass.quaternion.setFromUnitVectors(V(0, 0, 1), nd);
   });
@@ -918,21 +944,21 @@ const BAR_R = [[0.935, 0.935, 0.0], [0.935, 0.935, 0.05], [0.93, 0.99, 0.085], [
   const g = addPart('pedals', 'controls', 'Foot controls', 'est', 'Gear pedal on the left. Rear brake pedal and kick-start lever on the right.');
   const ch = MAT.chrome(), rub = MAT.rubber();
   const right = sideGroup(g, [0, 0, 0.2]), left = sideGroup(g, [0, 0, -0.2]);
-  tube([[0.505, 0.285, 0.19], [0.57, 0.27, 0.2], [0.645, 0.255, 0.21]], 0.008, ch, right, 24, 8);
-  rbox(0.035, 0.012, 0.05, 0.005, ch, right, V(0.66, 0.256, 0.215));
-  rod([0.505, 0.285, 0.185], [0.49, 0.22, 0.168], 0.007, ch, right);
-  tube([[0.585, 0.4, 0.155], [0.53, 0.39, 0.19], [0.47, 0.375, 0.205]], 0.009, ch, right, 24, 8);
-  rod([0.47, 0.375, 0.2], [0.47, 0.375, 0.25], 0.012, rub, right);
-  tube([[0.575, 0.325, -0.15], [0.62, 0.305, -0.18], [0.665, 0.29, -0.19]], 0.008, ch, left, 24, 8);
-  rod([0.665, 0.29, -0.18], [0.665, 0.29, -0.235], 0.011, rub, left);
+  tube([[0.485, 0.272, 0.19], [0.555, 0.258, 0.2], [0.63, 0.245, 0.21]], 0.008, ch, right, 24, 8);
+  rbox(0.035, 0.012, 0.05, 0.005, ch, right, V(0.645, 0.246, 0.215));
+  rod([0.485, 0.272, 0.185], [0.485, 0.205, 0.168], 0.007, ch, right);
+  tube([[0.585, 0.38, 0.155], [0.53, 0.37, 0.19], [0.47, 0.355, 0.205]], 0.009, ch, right, 24, 8);
+  rod([0.47, 0.355, 0.2], [0.47, 0.355, 0.25], 0.012, rub, right);
+  tube([[0.56, 0.31, -0.15], [0.605, 0.29, -0.18], [0.65, 0.275, -0.19]], 0.008, ch, left, 24, 8);
+  rod([0.65, 0.275, -0.18], [0.65, 0.275, -0.235], 0.011, rub, left);
 }
 {
   const g = addPart('cables', 'controls', 'Control cables', 'est', 'Clutch, front brake, throttle and speedometer cables. Routing is approximate.', [0, 0.15, 0]);
   const blk = MAT.black();
-  tube([[0.818, 1.08, -0.285], [0.87, 1.0, -0.17], [0.93, 0.88, -0.09], [0.94, 0.75, -0.07], [0.88, 0.6, -0.1], [0.75, 0.5, -0.14], [0.63, 0.43, -0.152]], 0.0032, blk, g, 72, 6);
-  tube([[0.818, 1.08, 0.285], [0.88, 1.0, 0.17], [0.96, 0.87, 0.06], [1.04, 0.74, -0.06], [1.12, 0.58, -0.125], [1.18, 0.46, -0.125], forkPt(0, 0, -0.086).add(V(-0.07, 0.112))], 0.0032, blk, g, 72, 6);
-  tube([[0.8, 1.075, 0.3], [0.86, 1.0, 0.17], [0.92, 0.88, 0.08], [0.9, 0.76, 0.05], [0.78, 0.68, 0.04], [0.7, 0.64, 0.04]], 0.0032, blk, g, 56, 6);
-  tube([[1.27, 0.33, -0.09], [1.2, 0.5, -0.125], [1.1, 0.78, -0.115], [1.0, 0.95, -0.05], forkPt(0.76, 0.075).add(V(0.0, -0.03))], 0.003, blk, g, 48, 6);
+  tube([[0.8, 1.068, -0.285], [0.86, 1.0, -0.17], [0.93, 0.88, -0.09], [0.94, 0.75, -0.07], [0.87, 0.62, -0.1], [0.72, 0.5, -0.14], [0.6, 0.43, -0.152]], 0.0032, blk, g, 72, 6);
+  tube([[0.8, 1.068, 0.285], [0.87, 1.0, 0.17], [0.96, 0.87, 0.06], [1.05, 0.74, -0.06], [1.13, 0.58, -0.125], [1.19, 0.47, -0.125], forkPt(0, 0, -0.086).add(V(-0.07, 0.112))], 0.0032, blk, g, 72, 6);
+  tube([[0.775, 1.05, 0.3], [0.85, 0.99, 0.17], [0.92, 0.87, 0.08], [0.88, 0.74, 0.05], [0.76, 0.66, 0.04], [0.68, 0.63, 0.04]], 0.0032, blk, g, 56, 6);
+  tube([[1.27, 0.34, -0.085], [1.2, 0.5, -0.12], [1.11, 0.78, -0.11], [1.02, 0.95, -0.05], forkPt(0.755, 0.07).add(V(0.0, -0.03))], 0.003, blk, g, 48, 6);
 }
 
 /* =====================================================================
@@ -1012,7 +1038,7 @@ function dimLine(a, b, tick, label, sub, labelAt) {
   const z = 0;
   dimLine(V(0, 0.004, z), V(WB, 0.004, z), V(0, 0.04, 0), 'Wheelbase 1,280 mm', 'spec', V(WB / 2, 0.07, z));
   dimLine(V(bboxAll.min.x, 1.38, z), V(bboxAll.max.x, 1.38, z), V(0, 0.04, 0), 'Length 1,990 mm', `spec · model ${mm(bboxAll.max.x - bboxAll.min.x)}`);
-  dimLine(V(0.44, 0, z), V(0.44, 0.744, z), V(0.04, 0, 0), 'Seat 744 mm', 'spec', V(0.44, 0.5, z));
+  dimLine(V(0.4, 0, z), V(0.4, SEAT_TOP, z), V(0.04, 0, 0), 'Seat 744 mm', `spec · model ${mm(SEAT_TOP)}`, V(0.4, 0.5, z));
   dimLine(V(barBox.max.x - 0.03, 0, z), V(barBox.max.x - 0.03, barBox.max.y, z), V(0.04, 0, 0), 'Height 1,105 mm', `spec · model ${mm(barBox.max.y)}`, V(barBox.max.x - 0.03, 0.9, z));
   dimLine(V(0.8, barBox.max.y + 0.04, barBox.min.z), V(0.8, barBox.max.y + 0.04, barBox.max.z), V(0, 0.04, 0), 'Width 845 mm', `spec · model ${mm(barBox.max.z - barBox.min.z)}`, V(0.8, barBox.max.y + 0.13, 0));
 }
@@ -1229,7 +1255,7 @@ function closePanelOnMobile() { if (window.matchMedia('(max-width: 760px)').matc
 /* =====================================================================
    Loop
    ===================================================================== */
-let first = true;
+let first = true, camFrozen = false;
 function frame(now) {
   if (tween) {
     const k = Math.min(1, (now - tween.start) / tween.ms), e = ease(k);
@@ -1237,7 +1263,7 @@ function frame(now) {
     if (k >= 1) tween = null;
   }
   if (Math.abs(explodeTarget - explodeNow) > 0.0005) { explodeNow += (explodeTarget - explodeNow) * 0.16; applyExplode(explodeNow); }
-  controls.update();
+  if (!camFrozen) controls.update();
   updateDims();
   processHover();
   renderer.render(scene, camera);
@@ -1252,6 +1278,8 @@ window.viewer = {
   view: (n) => { const p = viewPose(n); tween = null; camera.position.copy(p.pos); controls.target.copy(p.target); controls.update(); setViewButtons(n); },
   select, explode: (t) => { explodeTarget = explodeNow = t; applyExplode(t); },
   dims: () => tDims.click(), parts: PARTS, bbox: bboxAll,
+  // used for lining the model up with reference photos
+  photoCam: (pos, target, up, fov) => { camFrozen = true; tween = null; camera.position.set(...pos); camera.up.set(...up); camera.fov = fov; camera.updateProjectionMatrix(); camera.lookAt(...target); },
 };
 </script>
 </body>
