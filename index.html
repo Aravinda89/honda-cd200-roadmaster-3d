@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Interactive 1:1 3D model of a CD200 Roadmaster, part by part.">
+<meta name="description" content="Interactive 1:1 3D model of a CD200 Roadmaster, with working drum brakes.">
 <title>CD200 Roadmaster Viewer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,6 +24,7 @@
   --grid: #b4c0c7;
   --overlay: rgba(245, 247, 248, 0.92);
   --shadow: 0 6px 24px rgba(23, 32, 38, 0.12);
+  --ok: #1d7a46; --ok-bg: #dcefe3; --warn: #8a5a00; --warn-bg: #f6e8c8; --bad: #a3271c; --bad-bg: #f6dcd8; --on: #b8321f; --on-bg: #fbe1d6;
   --font-display: "Saira Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
   --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -33,6 +34,7 @@
     --bg: #0e1316; --panel: #141b1f; --ink: #e1e8eb; --muted: #8e9ca4; --line: #26323a; --chip: #1c262b;
     --accent: #58b2e0; --signal: #ffa53d; --stage: #11181c; --floor: #151e23; --grid: #27343c;
     --overlay: rgba(20, 27, 31, 0.92); --shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+    --ok: #6fd39b; --ok-bg: #173526; --warn: #f2c16b; --warn-bg: #3a2c12; --bad: #ff8b7e; --bad-bg: #3d1a17; --on: #ff9a7a; --on-bg: #3f1f16;
     color-scheme: dark;
   }
 }
@@ -40,6 +42,7 @@
   --bg: #0e1316; --panel: #141b1f; --ink: #e1e8eb; --muted: #8e9ca4; --line: #26323a; --chip: #1c262b;
   --accent: #58b2e0; --signal: #ffa53d; --stage: #11181c; --floor: #151e23; --grid: #27343c;
   --overlay: rgba(20, 27, 31, 0.92); --shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+    --ok: #6fd39b; --ok-bg: #173526; --warn: #f2c16b; --warn-bg: #3a2c12; --bad: #ff8b7e; --bad-bg: #3d1a17; --on: #ff9a7a; --on-bg: #3f1f16;
   color-scheme: dark;
 }
 *, *::before, *::after { box-sizing: border-box; }
@@ -148,6 +151,59 @@ input[type="range"] { width: 100%; min-width: 0; accent-color: var(--accent); }
 #loading { position: absolute; inset: 0; display: grid; place-items: center; font: 600 15px var(--font-display); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); background: var(--stage); z-index: 6; }
 #loading p { margin: 0; max-width: 40ch; text-align: center; padding: 0 16px; }
 
+/* ---------- stage 2: brakes ---------- */
+.tb-left { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.stage-seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.bpanel { position: absolute; left: 16px; bottom: 16px; width: min(380px, calc(100% - 32px)); max-height: calc(100% - 96px); overflow-y: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 12px 14px 14px; display: grid; gap: 12px; z-index: 3; }
+.bp-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.bp-tabs { display: inline-flex; gap: 2px; background: var(--chip); border-radius: 9px; padding: 3px; }
+.bp-tabs button { border: 0; background: none; border-radius: 6px; padding: 7px 14px; font: 600 13px/1 var(--font-display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.bp-tabs button[aria-selected="true"] { background: var(--ink); color: var(--panel); }
+.bp-collapse { border: 1px solid var(--line); background: none; border-radius: 8px; padding: 6px 10px; font: 600 12px/1 var(--font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+#bpBody { display: grid; gap: 12px; }
+.hold { width: 100%; border: 0; border-radius: 10px; padding: 13px 14px; background: var(--accent); color: #fff; font: 700 16px/1 var(--font-display); letter-spacing: .1em; text-transform: uppercase; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.hold.down { background: var(--signal); }
+.bp-slider { display: grid; grid-template-columns: 96px minmax(0, 1fr) 76px; align-items: center; gap: 10px; }
+.bp-slider label { font: 600 12.5px/1.1 var(--font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.bp-slider output { font: 500 12px var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.bp-firm { margin: -6px 0 0; font: 500 11.5px var(--font-mono); color: var(--signal); }
+.bp-read { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.bp-read > div { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-width: 0; display: grid; gap: 5px; align-content: start; }
+.bp-read dt { font: 500 10.5px/1.2 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.bp-read dd { margin: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font: 600 14px/1.2 var(--font-body); font-variant-numeric: tabular-nums; }
+.bp-read dd small { font: 400 11.5px/1.2 var(--font-body); color: var(--muted); }
+.chip { font: 600 10.5px/1 var(--font-mono); letter-spacing: .02em; padding: 4px 7px; border-radius: 999px; background: var(--chip); color: var(--muted); white-space: nowrap; }
+.chip[data-state="ok"] { background: var(--ok-bg); color: var(--ok); }
+.chip[data-state="warn"] { background: var(--warn-bg); color: var(--warn); }
+.chip[data-state="bad"] { background: var(--bad-bg); color: var(--bad); }
+.chip[data-state="on"] { background: var(--on-bg); color: var(--on); }
+.bp-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; counter-reset: st; }
+.bp-steps li { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px; font-size: 13px; line-height: 1.35; color: var(--muted); padding: 5px 6px; border-radius: 6px; }
+.bp-steps li::before { counter-increment: st; content: counter(st); font: 600 11px/20px var(--font-mono); text-align: center; border-radius: 50%; width: 20px; height: 20px; background: var(--chip); color: var(--muted); }
+.bp-steps li.done { color: var(--ink); }
+.bp-steps li.done::before { background: var(--line); color: var(--ink); }
+.bp-steps li.active { color: var(--ink); background: var(--chip); }
+.bp-steps li.active::before { background: var(--signal); color: #fff; }
+.bp-checks { border-top: 1px solid var(--line); padding-top: 10px; }
+.bp-checks summary { cursor: pointer; font: 600 13px/1 var(--font-display); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); padding: 2px 0; }
+.bp-checks .inner { display: grid; gap: 10px; margin-top: 12px; }
+.bp-hint, .bp-wear { margin: 0; font-size: 12.5px; color: var(--muted); max-width: 60ch; }
+.bp-wear-row { display: flex; align-items: flex-start; gap: 8px; }
+.bp-wear { color: var(--ink); }
+.bp-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.bp-row button { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 7px 10px; font: 600 12.5px/1 var(--font-display); letter-spacing: .08em; text-transform: uppercase; }
+.bp-row button:hover { border-color: var(--muted); }
+.bp-row button[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.bp-note { margin: 0; font-size: 11.5px; color: var(--muted); }
+.faults { display: grid; gap: 12px; }
+.fault h3 { margin: 0 0 4px; font: 600 15px/1.15 var(--font-display); letter-spacing: .04em; text-transform: uppercase; }
+.fault ul { margin: 0; padding-left: 16px; display: grid; gap: 3px; font-size: 13px; }
+.fault li::marker { color: var(--muted); }
+.fault b { font-weight: 600; }
+.stages button { border: 0; background: none; padding: 0; font: inherit; color: inherit; text-align: left; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+.stages button:hover { text-decoration-color: var(--accent); }
+.stages .tag.soon { color: var(--muted); }
+
 @media (max-width: 760px) {
   #app { grid-template-columns: 1fr; }
   #panel { position: fixed; left: 0; right: 0; bottom: 0; max-height: 72%; transform: translateY(105%); transition: transform .25s ease; border-right: 0; border-top: 1px solid var(--line); border-radius: 16px 16px 0 0; box-shadow: var(--shadow); padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px)); z-index: 10; }
@@ -159,6 +215,9 @@ input[type="range"] { width: 100%; min-width: 0; accent-color: var(--accent); }
   .seg button { padding: 6px 9px; font-size: 12px; }
   .bottombar { left: 12px; right: 12px; bottom: 12px; max-width: none; }
   #info { left: 12px; right: 12px; width: auto; bottom: 92px; max-height: 46%; }
+  .bpanel { left: 12px; right: 12px; bottom: 12px; width: auto; max-height: 56%; padding: 10px 12px 12px; }
+  .brakes-mode #info { top: 104px; bottom: auto; max-height: 34%; }
+  .bp-slider { grid-template-columns: 84px minmax(0, 1fr) 64px; }
 }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
@@ -177,9 +236,9 @@ input[type="range"] { width: 100%; min-width: 0; accent-color: var(--accent); }
 <div id="app">
   <aside id="panel" aria-label="Parts index">
     <header>
-      <p class="eyebrow">Stage 1 · Outer body</p>
+      <p class="eyebrow" id="eyebrow">Stage 1 · Outer body</p>
       <h1>CD200 Roadmaster</h1>
-      <p class="lede">A 1:1 scale model of the bike, built from published dimensions and measurements taken from the owner's photos. Click any part on the bike, or in this list, to identify it.</p>
+      <p class="lede">A 1:1 scale model of the bike, built from the workshop manual and measurements taken from the owner's photos. Click any part on the bike, or in this list, to identify it. Switch to Brakes to see the drum brakes work.</p>
     </header>
 
     <section class="specs" aria-labelledby="specsTitle">
@@ -193,13 +252,25 @@ input[type="range"] { width: 100%; min-width: 0; accent-color: var(--accent); }
         <dt>Ground clearance</dt><dd>150 mm</dd>
         <dt>Dry weight</dt><dd>122 kg</dd>
         <dt>Tyres front / rear</dt><dd>3.00-17 4PR / 6PR</dd>
-        <dt>Tyre pressure F / R</dt><dd>25 / 32 psi</dd>
+        <dt>Tyre pressure F / R</dt><dd>25 / 28–32 psi</dd>
         <dt>Brakes F / R</dt><dd>140 / 130 mm drum</dd>
+        <dt>Brake free play F / R</dt><dd>10–20 / 20–30 mm</dd>
         <dt>Fork / rear travel</dt><dd>115 / 64 mm</dd>
         <dt>Engine</dt><dd>194 cc twin</dd>
         <dt>Bore × stroke</dt><dd>53 × 44 mm</dd>
       </dl>
-      <p class="src">Source: Haynes Owners Workshop Manual no. 572, CD/CM 185 &amp; 200 (CD200T column). The seat on the owner's bike measures about 770 mm in photos, so the model follows the photos there.</p>
+      <p class="src">Source: Haynes Owners Workshop Manual no. 572, CD/CM 185 &amp; 200 (CD200T column). The manual gives 28 psi rear in its maintenance section and 32 psi in its tyre specifications. The seat on the owner's bike measures about 770 mm in photos, so the model follows the photos there.</p>
+    </section>
+
+    <section id="faults" hidden aria-labelledby="faultsTitle">
+      <h2 class="block-title" id="faultsTitle">Brake fault finder</h2>
+      <div class="faults">
+        <div class="fault"><h3>Brake does not stop well</h3><ul><li><b>Worn linings:</b> renew the shoes.</li><li><b>Dirt on the lining surface:</b> clean it.</li><li><b>Arm fitted on the wrong cam spline:</b> refit it to the punch marks.</li><li><b>Worn cam:</b> renew it.</li></ul></div>
+        <div class="fault"><h3>Bike feels slow, brakes binding</h3><ul><li><b>Brake adjusted too tight:</b> a warm drum after a ride is the best evidence. Re-adjust the free play.</li></ul></div>
+        <div class="fault"><h3>Brake grabs when applied gently</h3><ul><li><b>Shoe ends not chamfered:</b> chamfer them with a file.</li><li><b>Oval drum:</b> skim it lightly on a lathe.</li></ul></div>
+        <div class="fault"><h3>Brake slow or spongy to release</h3><ul><li><b>Cam binding in its housing:</b> free it and grease it.</li><li><b>Weak shoe springs:</b> renew them.</li></ul></div>
+      </div>
+      <p class="src">Source: Haynes manual no. 572, chapter 5, fault diagnosis.</p>
     </section>
 
     <section aria-labelledby="partsTitle">
@@ -211,6 +282,7 @@ input[type="range"] { width: 100%; min-width: 0; accent-color: var(--accent); }
       <h2 class="block-title" id="basisTitle">How each part was sized</h2>
       <div class="basis-key">
         <span class="basis" data-basis="spec">From published spec</span>
+        <span class="basis" data-basis="manual">From the workshop manual</span>
         <span class="basis" data-basis="photo">Measured from photos (about ±3 cm)</span>
         <span class="basis" data-basis="est">Estimated, not clear in photos</span>
       </div>
@@ -219,10 +291,10 @@ input[type="range"] { width: 100%; min-width: 0; accent-color: var(--accent); }
     <section aria-labelledby="stagesTitle">
       <h2 class="block-title" id="stagesTitle">Build stages</h2>
       <ol class="stages">
-        <li class="now">Outer body <span class="tag">Now</span></li>
-        <li>Brakes <span></span></li>
-        <li>Engine internals <span></span></li>
-        <li>Electrical <span></span></li>
+        <li><button type="button" data-stage="body" aria-pressed="true">Outer body</button> <span class="tag">Done</span></li>
+        <li class="now"><button type="button" data-stage="brakes" aria-pressed="false">Brakes</button> <span class="tag">New</span></li>
+        <li>Engine internals <span class="tag soon">Next</span></li>
+        <li>Electrical <span class="tag soon">Later</span></li>
       </ol>
     </section>
   </aside>
@@ -231,6 +303,11 @@ input[type="range"] { width: 100%; min-width: 0; accent-color: var(--accent); }
     <div id="viewport"></div>
 
     <div class="topbar">
+      <div class="tb-left">
+      <div class="seg stage-seg" role="group" aria-label="Build stage">
+        <button type="button" id="st-body" data-stage="body" aria-pressed="true">Body</button>
+        <button type="button" id="st-brakes" data-stage="brakes" aria-pressed="false">Brakes</button>
+      </div>
       <div class="seg" role="group" aria-label="Camera view">
         <button type="button" id="v-three" data-view="three" aria-pressed="true">3/4</button>
         <button type="button" id="v-left" data-view="left" aria-pressed="false">Left</button>
@@ -238,6 +315,7 @@ input[type="range"] { width: 100%; min-width: 0; accent-color: var(--accent); }
         <button type="button" id="v-front" data-view="front" aria-pressed="false">Front</button>
         <button type="button" id="v-rear" data-view="rear" aria-pressed="false">Rear</button>
         <button type="button" id="v-top" data-view="top" aria-pressed="false">Top</button>
+      </div>
       </div>
       <div class="tools">
         <button type="button" class="tool" id="tDims" aria-pressed="false"><span class="dot"></span>Dimensions</button>
@@ -255,6 +333,55 @@ input[type="range"] { width: 100%; min-width: 0; accent-color: var(--accent); }
       </div>
       <p class="legend">Floor grid: 100 mm squares · drag to orbit, scroll or pinch to zoom</p>
     </div>
+
+    <section id="brakePanel" class="bpanel" hidden aria-label="Brake controls">
+      <div class="bp-head">
+        <div class="bp-tabs" role="tablist" aria-label="Which brake">
+          <button type="button" role="tab" id="bt-f" data-brake="f" aria-selected="true">Front</button>
+          <button type="button" role="tab" id="bt-r" data-brake="r" aria-selected="false">Rear</button>
+        </div>
+        <button type="button" class="bp-collapse" id="bpCollapse" aria-expanded="true" aria-controls="bpBody">Hide</button>
+      </div>
+      <div id="bpBody">
+        <button type="button" class="hold" id="bpHold">Hold to squeeze the lever</button>
+        <div class="bp-slider">
+          <label for="bpTravel" id="bpTravelLabel">Lever travel</label>
+          <input type="range" id="bpTravel" min="0" max="45" step="0.5" value="0">
+          <output id="bpTravelOut" for="bpTravel">0 mm</output>
+        </div>
+        <p class="bp-firm" id="bpFirm" hidden>The brake is on: the lever goes firm here.</p>
+        <dl class="bp-read">
+          <div><dt>Free play</dt><dd><span id="rdFp">0 mm</span><span class="chip" id="chFp">In spec</span></dd></div>
+          <div><dt>Cam turned</dt><dd id="rdCam">0°</dd></div>
+          <div><dt>Linings</dt><dd><span class="chip" id="chContact">Clear</span><small id="rdContact"></small></dd></div>
+          <div id="rowLamp" hidden><dt>Stop lamp</dt><dd><span class="chip" id="chLamp">Off</span><small id="rdLamp"></small></dd></div>
+        </dl>
+        <div class="bp-row">
+          <button type="button" id="bpHubView">Hub view</button>
+          <button type="button" id="bpLinkView">Lever view</button>
+          <button type="button" id="bpInside" aria-pressed="true">See through back plate</button>
+        </div>
+        <ol class="bp-steps" id="bpSteps"></ol>
+        <details class="bp-checks" open>
+          <summary>Workshop checks</summary>
+          <div class="inner">
+            <div class="bp-slider">
+              <label for="bpAdj">Adjuster nut</label>
+              <input type="range" id="bpAdj" min="0" max="25" step="0.5" value="20" aria-describedby="bpAdjHint">
+              <output id="bpAdjOut" for="bpAdj">5 mm slack</output>
+            </div>
+            <p class="bp-hint" id="bpAdjHint"></p>
+            <div class="bp-slider">
+              <label for="bpLining">Lining left</label>
+              <input type="range" id="bpLining" min="1.5" max="4" step="0.1" value="4">
+              <output id="bpLiningOut" for="bpLining">4.0 mm</output>
+            </div>
+            <div class="bp-wear-row"><span class="chip" id="chWear">Linings OK</span><p class="bp-wear" id="bpWear"></p></div>
+          </div>
+        </details>
+        <p class="bp-note">Shoe clearances are drawn larger than real so you can see the shoes move. Figures from the Haynes workshop manual.</p>
+      </div>
+    </section>
 
     <article id="info" hidden aria-live="polite">
       <button type="button" id="infoClose" aria-label="Close part details">×</button>
@@ -501,13 +628,14 @@ const smooth = (x) => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 *
 const SYSTEMS = [
   { id: 'body', name: 'Bodywork' },
   { id: 'chassis', name: 'Frame & suspension' },
-  { id: 'wheels', name: 'Wheels, brakes & drive' },
+  { id: 'wheels', name: 'Wheels & drive' },
+  { id: 'brakes', name: 'Brakes' },
   { id: 'engine', name: 'Engine (outside)' },
   { id: 'exhaust', name: 'Exhaust' },
   { id: 'lights', name: 'Lights & instruments' },
   { id: 'controls', name: 'Controls' },
 ];
-const BASIS = { spec: 'From published spec', photo: 'Measured from photos (about ±3 cm)', est: 'Estimated, not clear in photos' };
+const BASIS = { spec: 'From published spec', manual: 'From the workshop manual', photo: 'Measured from photos (about ±3 cm)', est: 'Estimated, not clear in photos' };
 const bike = new THREE.Group();
 const PARTS = [], byId = new Map();
 function addPart(id, sys, name, basis, desc, explode = [0, 0, 0]) {
@@ -764,25 +892,8 @@ function wheel(parent, brakeSide) {
   const grp = new THREE.Group(); grp.position.copy(FA); g.add(grp); wheel(grp, -1);
 }
 {
-  const g = addPart('fbrake', 'wheels', 'Front drum brake', 'photo', 'Single-leading-shoe drum brake, 140 mm drum, on the left of the front hub. Worked by cable from the right handlebar lever. Linings are 4.0 mm new, 2.0 mm service limit.', [0.34, 0, -0.18]);
-  const grp = new THREE.Group(); grp.position.copy(FA); g.add(grp);
-  const plate = mesh(new THREE.CylinderGeometry(0.083, 0.086, 0.01, 48), MAT.casting(), grp); plate.rotation.x = Math.PI / 2; plate.position.z = -0.06;
-  const ring = mesh(new THREE.TorusGeometry(0.06, 0.004, 8, 48), MAT.alloy(), grp); ring.position.z = -0.066;
-  rod([-0.035, 0.062, -0.08], [-0.07, 0.112, -0.086], 0.006, MAT.alloy(), grp);
-  rod([0.0, -0.05, -0.078], [-0.04, -0.07, -0.088], 0.008, MAT.casting(), grp);
-}
-{
   const g = addPart('rwheel', 'wheels', 'Rear wheel', 'spec', '17-inch chromed steel rim with steel spokes and a 3.00-17 6-ply tyre. Pressure 32 psi cold, or 40 psi when carrying over 90 kg.', [-0.36, 0, 0]);
   const grp = new THREE.Group(); grp.position.copy(RA); g.add(grp); wheel(grp, 1);
-}
-{
-  const g = addPart('rbrake', 'wheels', 'Rear drum brake', 'spec', 'Single-leading-shoe drum brake, 130 mm drum, on the right of the rear hub. Worked by a rod from the right foot pedal. Linings are 4.0 mm new, 2.0 mm service limit.', [-0.36, 0, 0.18]);
-  const grp = new THREE.Group(); grp.position.copy(RA); g.add(grp);
-  const plate = mesh(new THREE.CylinderGeometry(0.083, 0.086, 0.01, 48), MAT.casting(), grp); plate.rotation.x = Math.PI / 2; plate.position.z = 0.06;
-  const ring = mesh(new THREE.TorusGeometry(0.06, 0.004, 8, 48), MAT.alloy(), grp); ring.position.z = 0.066;
-  rod([0.055, -0.035, 0.084], [0.07, -0.085, 0.09], 0.006, MAT.alloy(), grp);
-  rod([0.05, 0.05, 0.084], [0.25, 0.035, 0.1], 0.006, MAT.black(), grp);
-  rod([0.07, -0.08, 0.09], [0.485, -0.095, 0.165], 0.0038, MAT.chrome(), grp);
 }
 {
   const g = addPart('drive', 'wheels', 'Chain and sprockets', 'est', 'Final drive from the gearbox sprocket to the rear wheel sprocket. It sits inside the chain case; hide the case to see it.', [-0.05, 0, -0.22]);
@@ -927,8 +1038,8 @@ const BAR_R = [[0.945, 0.975, 0.0], [0.945, 0.975, 0.05], [0.94, 1.03, 0.085], [
   });
 }
 {
-  const g = addPart('levers', 'controls', 'Hand levers', 'photo', 'Clutch lever on the left, front brake lever on the right.');
-  [-1, 1].forEach((s) => {
+  const g = addPart('levers', 'controls', 'Clutch lever', 'manual', 'Left-hand lever. Free play at the lever end should be 10–20 mm. Set it with the adjuster at the crankcase end of the cable; the threaded adjuster at the lever gives fine adjustment.');
+  [-1].forEach((s) => {
     const sg = sideGroup(g, [0.04, 0.3, 0.12 * s]);
     rbox(0.03, 0.026, 0.03, 0.006, MAT.alloy(), sg, V(0.8, 1.075, 0.275 * s));
     tube([[0.802, 1.071, 0.28 * s], [0.835, 1.06, 0.3 * s], [0.81, 1.046, 0.36 * s], [0.77, 1.034, 0.42 * s]], 0.0058, MAT.chrome(), sg, 32, 8);
@@ -946,25 +1057,303 @@ const BAR_R = [[0.945, 0.975, 0.0], [0.945, 0.975, 0.05], [0.94, 1.03, 0.085], [
   });
 }
 {
-  const g = addPart('pedals', 'controls', 'Foot controls', 'est', 'Gear pedal on the left. Rear brake pedal and kick-start lever on the right.');
+  const g = addPart('pedals', 'controls', 'Gear and kick-start pedals', 'est', 'Gear pedal on the left, kick-start lever on the right. The rear brake pedal is listed under Brakes.');
   const ch = MAT.chrome(), rub = MAT.rubber();
   const right = sideGroup(g, [0, 0, 0.2]), left = sideGroup(g, [0, 0, -0.2]);
-  tube([[0.485, 0.272, 0.19], [0.555, 0.258, 0.2], [0.63, 0.245, 0.21]], 0.008, ch, right, 24, 8);
-  rbox(0.035, 0.012, 0.05, 0.005, ch, right, V(0.645, 0.246, 0.215));
-  rod([0.485, 0.272, 0.185], [0.485, 0.205, 0.168], 0.007, ch, right);
   tube([[0.585, 0.38, 0.155], [0.53, 0.37, 0.19], [0.47, 0.355, 0.205]], 0.009, ch, right, 24, 8);
   rod([0.47, 0.355, 0.2], [0.47, 0.355, 0.25], 0.012, rub, right);
   tube([[0.56, 0.31, -0.15], [0.605, 0.29, -0.18], [0.65, 0.275, -0.19]], 0.008, ch, left, 24, 8);
   rod([0.65, 0.275, -0.18], [0.65, 0.275, -0.235], 0.011, rub, left);
 }
 {
-  const g = addPart('cables', 'controls', 'Control cables', 'est', 'Clutch, front brake, throttle and speedometer cables. Routing is approximate.', [0, 0.15, 0]);
+  const g = addPart('cables', 'controls', 'Control cables', 'est', 'Clutch, throttle and speedometer cables. Routing is approximate. The front brake cable is listed under Brakes.', [0, 0.15, 0]);
   const blk = MAT.black();
   tube([[0.8, 1.068, -0.285], [0.86, 1.0, -0.17], [0.93, 0.88, -0.09], [0.94, 0.75, -0.07], [0.87, 0.62, -0.1], [0.72, 0.5, -0.14], [0.6, 0.43, -0.152]], 0.0032, blk, g, 72, 6);
-  tube([[0.8, 1.068, 0.285], [0.87, 1.0, 0.17], [0.96, 0.87, 0.06], [1.05, 0.74, -0.06], [1.13, 0.58, -0.125], [1.19, 0.47, -0.125], forkPt(0, 0, -0.086).add(V(-0.07, 0.112))], 0.0032, blk, g, 72, 6);
   tube([[0.775, 1.05, 0.3], [0.85, 0.99, 0.17], [0.92, 0.87, 0.08], [0.88, 0.74, 0.05], [0.76, 0.66, 0.04], [0.68, 0.63, 0.04]], 0.0032, blk, g, 56, 6);
   tube([[1.27, 0.34, -0.085], [1.2, 0.5, -0.12], [1.11, 0.78, -0.11], [1.02, 0.95, -0.05], forkPt(0.755, 0.07).add(V(0.0, -0.03))], 0.003, blk, g, 48, 6);
 }
+
+/* =====================================================================
+   Build: brakes (stage 2)
+   Layout follows the workshop manual's Fig. 5.1 (front) and Fig. 5.2 (rear):
+   single leading shoe drums, both shoes pivoting on one anchor pin and spread
+   by a flat cam. Drum sizes, lining limits and free play from its specs.
+   ===================================================================== */
+const BRAKE_MAT = {
+  drum: () => new THREE.MeshStandardMaterial({ color: 0x5d6267, metalness: 0.75, roughness: 0.45, side: THREE.DoubleSide }),
+  lining: () => new THREE.MeshStandardMaterial({ color: 0x4d3c2f, metalness: 0, roughness: 0.95 }),
+  shoe: () => new THREE.MeshStandardMaterial({ color: 0xa3a6a3, metalness: 0.6, roughness: 0.5 }),
+  steel: () => new THREE.MeshStandardMaterial({ color: 0x80858a, metalness: 0.85, roughness: 0.35 }),
+  spring: () => new THREE.MeshStandardMaterial({ color: 0xc2c6ca, metalness: 0.9, roughness: 0.3 }),
+  mark: () => new THREE.MeshStandardMaterial({ color: 0xf4f4f0, metalness: 0.1, roughness: 0.5 }),
+  glow: (color) => { const m = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, depthWrite: false }); m.userData.noGhost = true; return m; },
+};
+const LINING_NEW = 4.0, LINING_LIMIT = 2.0;
+const GAP_VIS = 0.0015;                 // running clearance, drawn larger than real so the movement can be seen
+const BRAKES = {};
+const unitRod = new THREE.CylinderGeometry(1, 1, 1, 10);
+const polar = (r, deg) => V(r * Math.cos(deg * DEG), r * Math.sin(deg * DEG), 0);
+function placeRod(m, a, b, r) {
+  const d = b.clone().sub(a);
+  m.position.copy(a).addScaledVector(d, 0.5); m.quaternion.copy(qAlong(d)); m.scale.set(r, Math.max(d.length(), 1e-4), r);
+}
+function springGeo(len, coilR, wireR) {
+  const turns = Math.max(4, Math.round(len / 0.0026));
+  const c = new (class extends THREE.Curve { getPoint(t, v = new THREE.Vector3()) { const a = t * Math.PI * 2 * turns; return v.set(coilR * Math.cos(a), t * len, coilR * Math.sin(a)); } })();
+  return new THREE.TubeGeometry(c, turns * 12, wireR, 5, false);
+}
+function placeSpring(m, a, b, len0) { const d = b.clone().sub(a); m.position.copy(a); m.quaternion.copy(qAlong(d)); m.scale.set(1, d.length() / len0, 1); }
+function sectorMesh(r0, r1, a0, a1, z0, z1, mat, parent) {
+  const sh = new THREE.Shape();
+  sh.absarc(0, 0, r1, a0, a1, false);
+  sh.absarc(0, 0, r0, a1, a0, true);
+  sh.closePath();
+  const g = new THREE.ExtrudeGeometry(sh, { depth: Math.abs(z1 - z0), bevelEnabled: false, curveSegments: 40 });
+  const m = mesh(g, mat, parent); m.position.z = Math.min(z0, z1);
+  return m;
+}
+const rotAbout = (pt, piv, a) => { const c = Math.cos(a), s = Math.sin(a), x = pt.x - piv.x, y = pt.y - piv.y; return V(piv.x + x * c - y * s, piv.y + x * s + y * c, pt.z); };
+
+function buildBrake(o) {
+  const k = o.key, s = o.side, A = o.axle, dR = o.drumR;
+  const zMid = s * 0.037, zW = 0.026, zPlate = s * 0.06, zTag = s * 0.067, zArm = s * 0.073;
+  const Rt = dR - GAP_VIS - LINING_NEW / 1000;              // outer face of the shoe metal
+  const anchorDeg = o.camDeg + 180, C = polar(o.camR, o.camDeg), P = polar(o.camR, anchorDeg);
+  const dC = Math.asin(o.camT / 2 / o.camR) / DEG;          // shoe ends sit on the cam flats
+  const B = { key: k, o, A, C, P, Rt, zArm, lining: LINING_NEW, shoes: [], springs: [], omega: 0, spin: 0, contactGlow: 0 };
+  B.linMat = BRAKE_MAT.lining();
+  B.glowMat = BRAKE_MAT.glow(0xff7a1a);
+
+  /* drum: part of the hub, turns with the wheel */
+  {
+    const g = addPart(`${k}drum`, 'brakes', `${o.label} brake drum`, 'manual', o.drumDesc, o.ex.wheel);
+    const grp = new THREE.Group(); grp.position.copy(A); g.add(grp); B.drumGrp = grp;
+    const m = BRAKE_MAT.drum(), st = BRAKE_MAT.steel();
+    const wall = new THREE.CylinderGeometry(dR, dR, 0.038, 72, 1, true); wall.rotateX(Math.PI / 2);
+    mesh(wall, m, grp).position.z = s * 0.035;
+    const outer = new THREE.CylinderGeometry(dR + 0.007, dR + 0.007, 0.038, 72, 1, true); outer.rotateX(Math.PI / 2);
+    mesh(outer, m, grp).position.z = s * 0.035;
+    mesh(new THREE.RingGeometry(0.018, dR + 0.007, 72), m, grp).position.z = s * 0.016;
+    mesh(new THREE.RingGeometry(dR, dR + 0.007, 72), m, grp).position.z = s * 0.054;
+    for (let i = 0; i < 8; i++) { const r = rbox(0.004, 0.012, 0.03, 0.0015, st, grp, polar(dR + 0.008, i * 45).setZ(s * 0.035)); r.rotation.z = i * 45 * DEG; }
+  }
+
+  /* back plate: carries everything that does not turn */
+  {
+    const g = addPart(`${k}plate`, 'brakes', o.plateName, 'manual', o.plateDesc, o.ex.plate);
+    const grp = new THREE.Group(); grp.position.copy(A); g.add(grp);
+    const cast = MAT.casting(), st = BRAKE_MAT.steel();
+    const plate = mesh(new THREE.CylinderGeometry(dR + 0.016, dR + 0.018, 0.008, 64), cast, grp); plate.rotation.x = Math.PI / 2; plate.position.z = zPlate;
+    mesh(new THREE.TorusGeometry(dR + 0.012, 0.0035, 8, 64), cast, grp).position.z = zPlate + s * 0.004;
+    rod(P.clone().setZ(zMid - s * 0.017), P.clone().setZ(zPlate + s * 0.008), 0.0055, st, grp, 16);   // anchor pin
+    const washer = mesh(new THREE.TorusGeometry(0.0072, 0.0016, 6, 20), st, grp); washer.position.copy(P).setZ(zMid - s * 0.015);
+    const boss = mesh(new THREE.CylinderGeometry(0.011, 0.013, 0.008, 24), cast, grp); boss.rotation.x = Math.PI / 2; boss.position.copy(C).setZ(zPlate + s * 0.006);
+    const hb = mesh(new THREE.CylinderGeometry(0.02, 0.022, 0.012, 28), cast, grp); hb.rotation.x = Math.PI / 2; hb.position.z = zPlate + s * 0.007;
+    // wear indicator mark: where the tag arrow points when a 2.0 mm lining touches the drum
+    B.markMesh = mesh(new THREE.ConeGeometry(0.0034, 0.009, 3), BRAKE_MAT.mark(), grp);
+    o.extras(grp, B, { cast, st, zPlate, zArm, dR });
+  }
+
+  /* shoes and linings: each shoe pivots on the anchor pin */
+  {
+    const g = addPart(`${k}shoes`, 'brakes', `${o.label} brake shoes`, 'manual', o.shoeDesc, o.ex.shoes);
+    const grp = new THREE.Group(); grp.position.copy(A); g.add(grp); B.shoeGrp = grp;
+    const spans = [[o.camDeg + dC, anchorDeg - 11, 'a0'], [anchorDeg + 11, o.camDeg + 360 - dC, 'a1']];
+    spans.forEach(([a0, a1, camEnd]) => {
+      const pg = new THREE.Group(); pg.position.copy(P); grp.add(pg);
+      const inner = new THREE.Group(); inner.position.copy(P).multiplyScalar(-1); pg.add(inner);
+      const metal = BRAKE_MAT.shoe();
+      sectorMesh(Rt - 0.0025, Rt, a0 * DEG, a1 * DEG, zMid - zW / 2, zMid + zW / 2, metal, inner);
+      sectorMesh(Rt - 0.017, Rt - 0.0025, a0 * DEG, a1 * DEG, zMid - 0.0025, zMid + 0.0025, metal, inner);
+      const lin = { a0: (a0 + 6) * DEG, a1: (a1 - 6) * DEG, z0: zMid - zW / 2 + 0.001, z1: zMid + zW / 2 - 0.001, inner, mesh: null, glow: null };
+      const gain = (sign) => {
+        let best = 0; const rr = Rt + LINING_NEW / 1000;
+        for (let i = 0; i <= 48; i++) { const a = lin.a0 + (lin.a1 - lin.a0) * i / 48, Q = V(rr * Math.cos(a), rr * Math.sin(a)); best = Math.max(best, (rotAbout(Q, P, sign * 1e-3).length() - Q.length()) / 1e-3); }
+        return best;
+      };
+      const gp = gain(1), gn = gain(-1);
+      B.shoes.push({ pg, lin, sign: gp >= gn ? 1 : -1, gmax: Math.max(gp, gn), camEnd: camEnd === 'a0' ? a0 : a1 });
+    });
+  }
+
+  /* return springs: pull the shoes back onto the cam */
+  {
+    const g = addPart(`${k}springs`, 'brakes', `${o.label} shoe return springs`, 'manual', o.springDesc, o.ex.shoes);
+    const grp = new THREE.Group(); grp.position.copy(A); g.add(grp);
+    const rr = Rt - 0.012, zs = zMid + s * 0.0055, mat = BRAKE_MAT.spring();
+    [[o.camDeg + dC + 17, o.camDeg - dC - 17], [anchorDeg - 26, anchorDeg + 26]].forEach(([d0, d1]) => {
+      const a = polar(rr, d0).setZ(zs), b = polar(rr, d1).setZ(zs), len0 = a.distanceTo(b);
+      const m = mesh(springGeo(len0, 0.0028, 0.0008), mat, grp);
+      B.springs.push({ m, a, b, len0 });
+      placeSpring(m, a, b, len0);
+    });
+  }
+
+  /* cam, operating arm and wear indicator tag: turn together on the splined cam shaft */
+  {
+    const g = addPart(`${k}cam`, 'brakes', `${o.label} cam and operating arm`, 'manual', o.camDesc, o.ex.cam);
+    const grp = new THREE.Group(); grp.position.copy(A); g.add(grp);
+    const camG = new THREE.Group(); camG.position.copy(C); grp.add(camG); B.camG = camG;
+    const st = BRAKE_MAT.steel(), al = MAT.alloy();
+    const cam = rbox(o.camT, o.camL, zW, 0.0025, st, camG, V(0, 0, zMid)); cam.rotation.z = o.camDeg * DEG - Math.PI / 2;
+    rod(V(0, 0, zMid), V(0, 0, zArm + s * 0.005), 0.0055, st, camG, 16);
+    const arm = rbox(o.armLen, 0.014, 0.006, 0.0025, al, camG, polar(o.armLen / 2, o.armDeg).setZ(zArm)); arm.rotation.z = o.armDeg * DEG;
+    const boss = mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.009, 20), al, camG); boss.rotation.x = Math.PI / 2; boss.position.z = zArm;
+    const tr = mesh(new THREE.CylinderGeometry(0.0055, 0.0055, 0.014, 16), st, camG); tr.rotation.x = Math.PI / 2; tr.position.copy(polar(o.armLen, o.armDeg)).setZ(zArm);
+    rod(polar(0.012, o.armDeg + 90).setZ(zArm), polar(0.012, o.armDeg - 90).setZ(zArm), 0.0028, st, camG);   // pinch bolt
+    // wear indicator tag with arrow
+    const tag = rbox(0.026, 0.008, 0.0015, 0.0007, BRAKE_MAT.mark(), camG, polar(0.013, o.tagDeg).setZ(zTag)); tag.rotation.z = o.tagDeg * DEG;
+    const tip = mesh(new THREE.ConeGeometry(0.0045, 0.008, 3), BRAKE_MAT.mark(), camG);
+    tip.position.copy(polar(0.029, o.tagDeg)).setZ(zTag); tip.quaternion.copy(qAlong(polar(1, o.tagDeg)));
+  }
+
+  setLining(B, LINING_NEW);
+  B.gAvg = (B.shoes[0].gmax + B.shoes[1].gmax) / 2;
+  const ext = (th) => o.camL * Math.sin(th * DEG) + o.camT * Math.cos(th * DEG);
+  B.phiOf = (th) => (ext(th) - o.camT) / (4 * o.camR);                       // shoe swing produced by the cam
+  B.need = (w) => GAP_VIS + (LINING_NEW - w) / 1000;                           // gap to close before the lining touches
+  B.thetaC = (w) => { let lo = 0, hi = 75; for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; if (B.phiOf(m) * B.gAvg >= B.need(w)) hi = m; else lo = m; } return hi; };
+  B.markDeg = B.thetaC(LINING_LIMIT);
+  const mp = C.clone().add(polar(0.03, o.tagDeg + o.dir * B.markDeg)).setZ(zPlate + s * 0.0045);
+  B.markMesh.position.copy(mp); B.markMesh.quaternion.copy(qAlong(C.clone().sub(mp).setZ(0)));
+  B.trunnion = (th) => A.clone().add(C).add(polar(o.armLen, o.armDeg + o.dir * th)).setZ(zArm);
+  BRAKES[k] = B;
+  return B;
+}
+function setLining(B, w) {
+  B.lining = w;
+  B.shoes.forEach((sh) => {
+    const L = sh.lin;
+    [L.mesh, L.glow].forEach((m) => { if (m) { L.inner.remove(m); m.geometry.dispose(); } });
+    L.mesh = sectorMesh(B.Rt, B.Rt + w / 1000, L.a0, L.a1, L.z0, L.z1, B.linMat, L.inner);
+    L.glow = sectorMesh(B.Rt + w / 1000, B.Rt + w / 1000 + 0.0007, L.a0, L.a1, L.z0, L.z1, B.glowMat, L.inner); L.glow.castShadow = false;
+  });
+}
+function poseBrake(B, theta) {
+  B.camG.rotation.z = B.o.dir * theta * DEG;
+  const phi = B.phiOf(theta);
+  B.shoes.forEach((sh) => { sh.pg.rotation.z = sh.sign * Math.min(phi, B.need(B.lining) / sh.gmax); });
+  B.springs.forEach((sp) => {
+    const a = rotAbout(sp.a, B.P, B.shoes[0].pg.rotation.z), b = rotAbout(sp.b, B.P, B.shoes[1].pg.rotation.z);
+    placeSpring(sp.m, a, b, sp.len0);
+  });
+}
+
+/* ---------- front: lever, cable, drum ---------- */
+{
+  const g = addPart('flever', 'brakes', 'Front brake lever', 'manual', 'Right-hand lever. Its end should move 10–20 mm before the brake starts to bite. The threaded adjuster and lockring where the cable enters the lever give fine adjustment.', [0.04, 0.3, 0.12]);
+  rbox(0.03, 0.026, 0.03, 0.006, MAT.alloy(), g, V(0.8, 1.075, 0.275));
+  const piv = V(0.802, 1.071, 0.28);
+  const lg = new THREE.Group(); lg.position.copy(piv); g.add(lg);
+  tube([[0, 0, 0], [0.033, -0.011, 0.02], [0.008, -0.025, 0.08], [-0.032, -0.037, 0.14]], 0.0058, MAT.chrome(), lg, 32, 8);
+  rod(V(0.812, 1.081, 0.262), V(0.832, 1.084, 0.254), 0.0048, MAT.chrome(), g);       // threaded adjuster
+  rod(V(0.819, 1.0819, 0.2592), V(0.823, 1.0825, 0.2576), 0.0068, MAT.chrome(), g);   // lockring
+  BRAKES.lever = { group: lg, reach: Math.hypot(0.032, 0.14) };
+}
+const FB = buildBrake({
+  key: 'f', label: 'Front', axle: FA, side: -1, drumR: 0.07, camDeg: 115, camR: 0.052, camL: 0.026, camT: 0.008,
+  armDeg: 190, armLen: 0.075, tagDeg: 285, dir: -1,
+  plateName: 'Front brake back plate',
+  plateDesc: 'Carries the shoes, cam and anchor pin and does not turn. The speedometer drive gearbox is also in this plate. The lining wear indicator mark is on its outer face.',
+  drumDesc: 'Brake drum inside the front hub, 140 mm inside diameter, service limit 141 mm. It turns with the wheel. Scoring or oil on its surface reduces braking.',
+  shoeDesc: 'Two shoes with bonded linings, 4.0 mm thick new, service limit 2.0 mm. Single leading shoe: both shoes pivot on one anchor pin, held by a washer and split pin. Renew as a pair; oil-soaked linings cannot be cleaned.',
+  springDesc: 'Two springs pull the shoes back onto the cam when the lever is released. Weak springs give a spongy, slow brake release.',
+  camDesc: 'The cable turns the arm, and the arm turns the cam on its splined shaft. The wear indicator tag sits on the splines; its flat must engage the cut-out on the cam. Line up the punch marks on cam and arm when refitting.',
+  ex: { wheel: [0.34, 0, 0], plate: [0.34, 0, -0.18], shoes: [0.34, 0, -0.27], cam: [0.34, 0, -0.36] },
+  extras(grp, B, { cast, st, zArm, dR }) {
+    const T0 = B.C.clone().add(polar(0.075, 190));
+    const tdir = V(-Math.sin(190 * DEG) * -1, Math.cos(190 * DEG) * -1, 0).normalize();
+    B.lug = T0.clone().addScaledVector(tdir, 0.058).setZ(zArm);
+    const edge = polar(dR + 0.014, Math.atan2(B.lug.y, B.lug.x) / DEG).setZ(zArm);
+    const d = B.lug.clone().sub(edge);
+    rbox(d.length() + 0.01, 0.012, 0.007, 0.002, cast, grp, edge.clone().addScaledVector(d, 0.5)).rotation.z = Math.atan2(d.y, d.x);
+    const fer = mesh(new THREE.CylinderGeometry(0.0045, 0.0045, 0.012, 12), st, grp); fer.position.copy(B.lug).addScaledVector(tdir, 0.004); fer.quaternion.copy(qAlong(tdir));
+    rbox(0.022, 0.024, 0.018, 0.004, cast, grp, polar(0.026, 245).setZ(zArm - 0.004));   // speedometer drive gearbox
+    B.lugWorld = FA.clone().add(B.lug);
+  },
+});
+{
+  const g = addPart('fcable', 'brakes', 'Front brake cable', 'manual', 'Cable from the lever to the operating arm on the front back plate. The adjuster nut at the arm end is for major adjustment: turn it in to reduce free play. Oil the exposed inner cable regularly.', [0, 0.15, 0]);
+  const L = FB.lugWorld, up = V(-Math.sin(190 * DEG) * -1, Math.cos(190 * DEG) * -1, 0).normalize();
+  tube([[0.832, 1.084, 0.254], [0.87, 1.0, 0.17], [0.96, 0.87, 0.06], [1.05, 0.74, -0.06], [1.12, 0.6, -0.118], [1.15, 0.5, -0.1], L.clone().addScaledVector(up, 0.06).setZ(-0.082), L.clone().addScaledVector(up, 0.012)], 0.0034, MAT.black(), g, 96, 6);
+  const wire = mesh(unitRod, BRAKE_MAT.spring(), g, false);
+  const nut = mesh(new THREE.CylinderGeometry(0.0065, 0.0065, 0.008, 6), MAT.chrome(), g);
+  BRAKES.fcable = { wire, nut };
+}
+
+/* ---------- rear: pedal, rod, stop lamp switch, drum ---------- */
+const RB = buildBrake({
+  key: 'r', label: 'Rear', axle: RA, side: 1, drumR: 0.065, camDeg: -60, camR: 0.048, camL: 0.024, camT: 0.008,
+  armDeg: -95, armLen: 0.072, tagDeg: 5, dir: 1,
+  plateName: 'Rear brake back plate',
+  plateDesc: 'Carries the shoes, cam and anchor pin. The torque arm ties it to the swingarm so it cannot turn with the wheel; the arm is held by a nut and split pin. The lining wear indicator mark is on its outer face.',
+  drumDesc: 'Brake drum inside the rear hub, 130 mm inside diameter, service limit 131 mm. The maximum diameter is cast into the drum.',
+  shoeDesc: 'Two shoes with bonded linings, 4.0 mm thick new, service limit 2.0 mm, in a 130 mm drum. Both shoes pivot on one anchor pin, held by a washer and split pin. Renew as a pair.',
+  springDesc: 'Two springs pull the shoes back onto the cam when the pedal is released. Weak springs give a spongy, slow brake release.',
+  camDesc: 'The brake rod turns the arm, and the arm turns the cam on its splined shaft. The wear indicator tag sits on the splines next to the back plate. Line up the punch marks on cam and arm when refitting.',
+  ex: { wheel: [-0.36, 0, 0], plate: [-0.36, 0, 0.18], shoes: [-0.36, 0, 0.27], cam: [-0.36, 0, 0.36] },
+  extras(grp, B, { cast, st, zArm, dR }) {
+    const lug = polar(dR + 0.02, 42).setZ(zArm - 0.004);
+    rbox(0.026, 0.018, 0.008, 0.003, cast, grp, lug).rotation.z = 42 * DEG;
+    const end = V(0.25, 0.035, 0.1);
+    rod(lug, end, 0.0055, MAT.black(), grp);
+    [lug, end].forEach((p) => { const n = mesh(new THREE.CylinderGeometry(0.0062, 0.0062, 0.007, 6), st, grp); n.rotation.x = Math.PI / 2; n.position.copy(p).setZ(p.z + 0.008); });
+  },
+});
+const PEDAL_PIVOT = V(0.47, 0.30, 0.135), PEDAL_ROD = V(-0.015, 0.06, 0), PEDAL_HOOK = V(0.03, -0.006, 0);
+{
+  const g = addPart('rpedal', 'brakes', 'Rear brake pedal', 'manual', 'Pivots on the centre-stand spindle and is held by a split pin. The brake should start to work after 20–30 mm of pedal travel. Pedal height is set by the stopper bolt on the footrest bar; reset the free play after changing it. An extension spring returns the pedal.', [0, 0, 0.2]);
+  const ch = MAT.chrome(), st = BRAKE_MAT.steel();
+  const pg = new THREE.Group(); pg.position.copy(PEDAL_PIVOT); g.add(pg);
+  const boss = mesh(new THREE.CylinderGeometry(0.013, 0.013, 0.022, 20), ch, pg); boss.rotation.x = Math.PI / 2;
+  tube([[0, 0, 0.004], [0.06, -0.013, 0.014], [0.13, -0.037, 0.05], [0.165, -0.048, 0.066]], 0.008, ch, pg, 32, 10);
+  rbox(0.036, 0.012, 0.05, 0.005, ch, pg, V(0.18, -0.05, 0.07));
+  rbox(0.07, 0.014, 0.006, 0.003, ch, pg, PEDAL_ROD.clone().multiplyScalar(0.5).setZ(-0.008)).rotation.z = Math.atan2(PEDAL_ROD.y, PEDAL_ROD.x);
+  rbox(0.014, 0.004, 0.016, 0.0015, ch, pg, V(0.03, -0.012, 0.0));                      // plate for the stopper bolt
+  rod(V(0.5, 0.274, 0.135), V(0.5, 0.284, 0.135), 0.0045, st, g);                      // stopper bolt on the footrest bar
+  const ln = mesh(new THREE.CylinderGeometry(0.0062, 0.0062, 0.004, 6), st, g); ln.position.set(0.5, 0.277, 0.135);
+  BRAKES.pedal = { group: pg, reach: Math.hypot(0.18, 0.05) };
+}
+{
+  const g = addPart('rrod', 'brakes', 'Rear brake rod', 'manual', 'Links the pedal to the operating arm on the rear back plate. The adjuster nut on its rear end sets the free play: turn it in to reduce free play.', [0, 0, 0.2]);
+  const rodM = mesh(unitRod, MAT.chrome(), g);
+  const nut = mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.009, 6), MAT.chrome(), g);
+  const spr = mesh(springGeo(0.04, 0.0055, 0.0011), BRAKE_MAT.spring(), g);
+  BRAKES.rod = { rodM, nut, spr };
+}
+{
+  const g = addPart('stopsw', 'brakes', 'Stop lamp switch', 'manual', 'Linked to the pedal by a spring. It should light the stop lamp as the brake begins to work, at about 20 mm of pedal travel. Adjust it with the nut on the threaded switch body.', [0, 0.05, 0.2]);
+  rod(V(0.505, 0.435, 0.128), V(0.505, 0.395, 0.128), 0.0075, MAT.black(), g);
+  const an = mesh(new THREE.CylinderGeometry(0.0095, 0.0095, 0.005, 6), MAT.chrome(), g); an.position.set(0.505, 0.41, 0.128);
+  const top = V(0.505, 0.39, 0.13), len0 = top.distanceTo(PEDAL_PIVOT.clone().add(PEDAL_HOOK));
+  const spr = mesh(springGeo(len0, 0.0032, 0.0007), BRAKE_MAT.spring(), g);
+  BRAKES.stopsw = { spr, top, len0 };
+}
+const TAIL_GLOW = BRAKE_MAT.glow(0xff3020);
+{
+  const tail = byId.get('tail').group;
+  rbox(0.003, 0.114, 0.204, 0.002, TAIL_GLOW, tail, V(-0.392, 0.672, 0)).castShadow = false;
+  const b = mesh(new THREE.CylinderGeometry(0.038, 0.038, 0.004, 32), TAIL_GLOW, tail, false); b.rotation.z = Math.PI / 2; b.position.set(-0.406, 0.66, 0);
+}
+
+/* pose the linkages for given lever / pedal travel (mm actually reached) */
+function poseLinkages(fTravel, rTravel, fTheta, rTheta) {
+  BRAKES.lever.group.rotation.y = -fTravel / 1000 / BRAKES.lever.reach;
+  const Tf = FB.trunnion(fTheta), L = FB.lugWorld;
+  placeRod(BRAKES.fcable.wire, L, Tf, 0.0011);
+  const wd = L.clone().sub(Tf).normalize();
+  BRAKES.fcable.nut.position.copy(Tf).addScaledVector(wd, -0.009); BRAKES.fcable.nut.quaternion.copy(qAlong(wd));
+  const psi = -rTravel / 1000 / BRAKES.pedal.reach;
+  BRAKES.pedal.group.rotation.z = psi;
+  const Q = PEDAL_PIVOT.clone().add(PEDAL_ROD.clone().applyAxisAngle(V(0, 0, 1), psi));
+  const Tr = RB.trunnion(rTheta), rd = Q.clone().sub(Tr).normalize();
+  placeRod(BRAKES.rod.rodM, Tr.clone().addScaledVector(rd, -0.016), Q, 0.0035);
+  BRAKES.rod.nut.position.copy(Tr).addScaledVector(rd, -0.01); BRAKES.rod.nut.quaternion.copy(qAlong(rd));
+  BRAKES.rod.spr.position.copy(Tr).addScaledVector(rd, 0.007); BRAKES.rod.spr.quaternion.copy(qAlong(rd));
+  const H = PEDAL_PIVOT.clone().add(PEDAL_HOOK.clone().applyAxisAngle(V(0, 0, 1), psi));
+  placeSpring(BRAKES.stopsw.spr, BRAKES.stopsw.top, H, BRAKES.stopsw.len0);
+}
+poseBrake(FB, 0); poseBrake(RB, 0); poseLinkages(0, 0, 0, 0);
 
 /* =====================================================================
    Scene, renderer, lighting
@@ -1013,6 +1402,7 @@ grid.material.vertexColors = false; grid.material.transparent = true; grid.mater
 scene.add(grid);
 
 const camera = new THREE.PerspectiveCamera(32, 1, 0.05, 60);
+let viewShift = { x: 0, y: 0 };
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = 0.08;
 controls.minDistance = 0.45; controls.maxDistance = 11;
@@ -1067,7 +1457,9 @@ new MutationObserver(applyTheme).observe(document.documentElement, { attributes:
 function resize() {
   const w = viewport.clientWidth || 1, h = viewport.clientHeight || 1;
   renderer.setSize(w, h, false); labelRenderer.setSize(w, h);
-  camera.aspect = w / h; camera.updateProjectionMatrix();
+  camera.aspect = w / h;
+  if (viewShift.x || viewShift.y) camera.setViewOffset(w, h, -viewShift.x, -viewShift.y, w, h); else camera.clearViewOffset();
+  camera.updateProjectionMatrix();
 }
 new ResizeObserver(resize).observe(viewport);
 resize();
@@ -1075,8 +1467,12 @@ resize();
 /* =====================================================================
    Camera views
    ===================================================================== */
+function effAspect() {
+  const w = viewport.clientWidth || 1, h = viewport.clientHeight || 1;
+  return Math.max(0.3, (w - 2 * viewShift.x) / Math.max(1, h - 2 * Math.abs(viewShift.y)));
+}
 function viewPose(name) {
-  const a = camera.aspect, side = Math.max(3.5, 4.5 / a), end = Math.max(3.6, 2.6 / a);
+  const a = effAspect(), side = Math.max(3.5, 4.5 / a), end = Math.max(3.6, 2.6 / a);
   const c = CENTER.clone();
   switch (name) {
     case 'left': return { pos: c.clone().add(V(0, 0.12, -side)), target: c };
@@ -1105,9 +1501,10 @@ controls.addEventListener('start', () => { tween = null; setViewButtons(''); });
    Explode
    ===================================================================== */
 let explodeNow = 0, explodeTarget = 0;
+const HIDE_ON_EXPLODE = ['cables', 'fcable', 'rrod', 'stopsw'];
 function applyExplode(t) {
   bike.traverse((o) => { if (o.userData.explode) o.position.copy(o.userData.home).addScaledVector(o.userData.explode, t); });
-  const cables = byId.get('cables'); cables.group.visible = cables.visible && t < 0.04;
+  HIDE_ON_EXPLODE.forEach((id) => { const p = byId.get(id); p.group.visible = p.visible && t < 0.04; });
 }
 const explodeInput = $('#explode'), explodeOut = $('#explodeOut');
 explodeInput.addEventListener('input', () => { explodeTarget = explodeInput.value / 100; explodeOut.textContent = `${explodeInput.value}%`; if (explodeTarget > 0 && dims.visible) setDims(false); });
@@ -1144,6 +1541,7 @@ function setEmissive(p, color, intensity) {
   p.group.traverse((o) => {
     if (!o.isMesh) return;
     (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => {
+      if (!m.emissive) return;
       if (!m.userData.em) { m.userData.em = m.emissive.clone(); m.userData.ei = m.emissiveIntensity; }
       if (color) { m.emissive.set(color); m.emissiveIntensity = intensity; } else { m.emissive.copy(m.userData.em); m.emissiveIntensity = m.userData.ei; }
     });
@@ -1155,7 +1553,7 @@ function refreshHighlights() {
   if (hovered && hovered !== selected) setEmissive(hovered, signal(), 0.14);
   if (selected) setEmissive(selected, signal(), 0.34);
 }
-function setVisible(id, v) { const p = byId.get(id); p.visible = v; p.group.visible = v && !(id === 'cables' && explodeNow >= 0.04); if (!v && selected === p) select(null); }
+function setVisible(id, v) { const p = byId.get(id); p.visible = v; p.group.visible = v && !(HIDE_ON_EXPLODE.includes(id) && explodeNow >= 0.04); if (!v && selected === p) select(null); }
 function syncUI() {
   PARTS.forEach((p) => {
     const eye = $(`#pe-${p.id}`), pb = $(`#pb-${p.id}`);
@@ -1205,8 +1603,14 @@ function pick(x, y) {
   const r = renderer.domElement.getBoundingClientRect();
   ndc.set(((x - r.left) / r.width) * 2 - 1, -((y - r.top) / r.height) * 2 + 1);
   raycaster.setFromCamera(ndc, camera);
-  for (const h of raycaster.intersectObject(bike, true)) { if (shownChain(h.object)) return partOf(h.object); }
-  return null;
+  let fallback = null;
+  for (const h of raycaster.intersectObject(bike, true)) {
+    if (!shownChain(h.object)) continue;
+    const p = partOf(h.object); if (!p) continue;
+    if (p.ghost != null) { if (BRAKE_FOCUS.has(p.id) && !fallback) fallback = p; continue; }
+    return p;
+  }
+  return fallback;
 }
 const canvas = renderer.domElement, tip = $('#tip');
 let downAt = null, hoverEvt = null;
@@ -1248,6 +1652,7 @@ function updateDims() {
 tDims.addEventListener('click', () => setDims(tDims.getAttribute('aria-pressed') !== 'true'));
 tSpin.addEventListener('click', () => { const on = tSpin.getAttribute('aria-pressed') !== 'true'; tSpin.setAttribute('aria-pressed', String(on)); controls.autoRotate = on; });
 $('#tReset').addEventListener('click', () => {
+  if (stage !== 'body') { setStage('body'); return; }
   isolated = null; PARTS.forEach((p) => setVisible(p.id, true)); select(null);
   explodeTarget = 0; explodeInput.value = 0; explodeOut.textContent = '0%';
   controls.autoRotate = false; tSpin.setAttribute('aria-pressed', 'false');
@@ -1258,10 +1663,211 @@ panelToggle.addEventListener('click', () => { const open = !panel.classList.cont
 function closePanelOnMobile() { if (window.matchMedia('(max-width: 760px)').matches) { panel.classList.remove('open'); panelToggle.setAttribute('aria-expanded', 'false'); } }
 
 /* =====================================================================
+   Stage 2: brake mode (operate, adjust, check wear)
+   ===================================================================== */
+const BRAKE_UI = {
+  f: {
+    label: 'Front', travelMax: 60, k: 1.4, slack: 5, slackMax: 25, spec: [10, 20], firm: 2.5, firmText: 'The brake is on: the lever goes firm here.',
+    hold: 'Hold to squeeze the lever', travelLabel: 'Lever travel', linkView: 'Lever view', where: 'at the lever end',
+    adjHint: 'Turn the adjuster nut at the brake arm in to take up cable slack. The manual asks for 10–20 mm of free play at the lever end.',
+    steps: ['The lever pulls the inner cable. The first part of the travel only takes up slack: that is the free play.', 'The cable turns the operating arm on the back plate.', 'The arm turns the cam inside the plate.', 'The cam pushes the shoes apart. Each shoe pivots on the anchor pin.', 'The linings press on the drum and slow the wheel.'],
+  },
+  r: {
+    label: 'Rear', travelMax: 75, k: 1.2, slack: 13, slackMax: 25, spec: [20, 30], firm: 3, switchAt: 20, firmText: 'The brake is on: the pedal goes firm here.',
+    hold: 'Hold to press the pedal', travelLabel: 'Pedal travel', linkView: 'Pedal view', where: 'at the pedal',
+    adjHint: 'Turn the adjuster nut on the end of the brake rod in to reduce free play. The manual asks for 20–30 mm of pedal travel before the brake works.',
+    steps: ['The pedal pulls the brake rod forward. The first part of the travel only takes up slack: that is the free play.', 'The rod turns the operating arm on the back plate.', 'The arm turns the cam inside the plate.', 'The cam pushes the shoes apart. Each shoe pivots on the anchor pin.', 'The linings press on the drum and slow the wheel.'],
+  },
+};
+const BRAKE_FOCUS = new Set(PARTS.filter((p) => p.sys === 'brakes').map((p) => p.id).concat(['tail']));
+const BRAKE_CONTEXT = { fwheel: 0.12, rwheel: 0.12, bars: 0.45, pegs: 0.3 };   // parts kept faintly visible for reference
+const bstate = { f: { t: 0, target: 0 }, r: { t: 0, target: 0 } };
+let stage = 'body', brakeKey = 'f', seeInside = true, holding = false;
+const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function setGhost(p, op) {
+  if ((p.ghost ?? null) === op) return;
+  p.ghost = op;
+  p.group.traverse((o) => {
+    if (!o.isMesh) return;
+    if (o.userData.cs0 === undefined) o.userData.cs0 = o.castShadow;
+    o.castShadow = op == null ? o.userData.cs0 : false;
+    (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => {
+      if (m.userData.noGhost) return;
+      if (!m.userData.g0) m.userData.g0 = { t: m.transparent, o: m.opacity, d: m.depthWrite };
+      const g0 = m.userData.g0;
+      if (op == null) { m.transparent = g0.t; m.opacity = g0.o; m.depthWrite = g0.d; } else { m.transparent = true; m.opacity = op; m.depthWrite = false; }
+      m.needsUpdate = true;
+    });
+  });
+}
+function applyGhosts() {
+  PARTS.forEach((p) => {
+    let op = null;
+    if (stage === 'brakes') {
+      if (!BRAKE_FOCUS.has(p.id)) op = BRAKE_CONTEXT[p.id] ?? 0.07;
+      else if (seeInside && (p.id === 'fplate' || p.id === 'rplate')) op = 0.16;
+    }
+    setGhost(p, op);
+  });
+}
+
+function brakeNumbers(key) {
+  const B = BRAKES[key], cfg = BRAKE_UI[key];
+  const thC = B.thetaC(B.lining), fp = cfg.slack + thC / cfg.k, limit = fp + cfg.firm;
+  const tEff = Math.min(bstate[key].t, limit);
+  const theta = Math.min(thC, Math.max(0, (tEff - cfg.slack) * cfg.k));
+  return { thC, fp, limit, tEff, theta, contact: tEff >= fp - 1e-6 && tEff > 0, firm: tEff >= limit - 0.05 };
+}
+function brakePose(key, which) {
+  const m = Math.max(1, (which === 'hub' ? 0.85 : 1.15) / effAspect());
+  let target, off;
+  if (key === 'f' && which === 'hub') { target = FA.clone().add(V(-0.015, 0.02, -0.06)); off = V(-0.1, 0.1, -0.62); }
+  else if (key === 'f') { target = V(0.78, 1.05, 0.34); off = V(0.2, 0.17, 0.3); }
+  else if (which === 'hub') { target = RA.clone().add(V(0.03, -0.01, 0.07)); off = V(0.1, 0.1, 0.62); }
+  else { target = V(0.31, 0.3, 0.13); off = V(0.04, 0.22, 1.15); }
+  return { pos: target.clone().addScaledVector(off, m), target };
+}
+
+const panelEl = $('#brakePanel'), holdBtn = $('#bpHold'), travelIn = $('#bpTravel'), adjIn = $('#bpAdj'), liningIn = $('#bpLining');
+function chip(el, state, text) { el.dataset.state = state; el.textContent = text; }
+const fmm = (v) => `${v.toFixed(1)} mm`;
+function renderSteps() {
+  $('#bpSteps').innerHTML = BRAKE_UI[brakeKey].steps.map((t, i) => `<li id="bs${i}">${t}</li>`).join('');
+}
+function updateReadouts() {
+  const key = brakeKey, cfg = BRAKE_UI[key], B = BRAKES[key], n = brakeNumbers(key);
+  $('#bpTravelOut').textContent = `${n.tEff.toFixed(0)} mm`;
+  $('#bpFirm').hidden = !n.firm; $('#bpFirm').textContent = cfg.firmText;
+  $('#rdFp').textContent = fmm(n.fp);
+  if (n.fp < cfg.spec[0]) chip($('#chFp'), 'bad', 'Too little: may drag');
+  else if (n.fp > cfg.spec[1]) chip($('#chFp'), 'warn', 'Too much: adjust');
+  else chip($('#chFp'), 'ok', `In spec ${cfg.spec[0]}–${cfg.spec[1]}`);
+  $('#rdCam').textContent = `${n.theta.toFixed(0)}° of ${n.thC.toFixed(0)}°`;
+  chip($('#chContact'), n.contact ? 'on' : 'idle', n.contact ? 'On the drum' : 'Clear');
+  $('#rdContact').textContent = n.contact ? 'Pressing' : `${((B.need(B.lining) - Math.min(B.phiOf(n.theta), B.need(B.lining) / B.gAvg) * B.gAvg) * 1000).toFixed(1)} mm gap`;
+  if (key === 'r') { const on = n.tEff >= cfg.switchAt; chip($('#chLamp'), on ? 'on' : 'idle', on ? 'On' : 'Off'); $('#rdLamp').textContent = `lights at ${cfg.switchAt} mm`; }
+  // steps
+  const t = n.tEff, phase = t <= 0.05 ? 0 : t < cfg.slack ? 1 : !n.contact ? 2 : 3;
+  document.querySelectorAll('#bpSteps li').forEach((li, i) => {
+    let c = '';
+    if (phase === 1) c = i === 0 ? 'active' : '';
+    if (phase === 2) c = i === 0 ? 'done' : i <= 3 ? 'active' : '';
+    if (phase === 3) c = i <= 3 ? 'done' : 'active';
+    li.className = c;
+  });
+  // adjuster
+  $('#bpAdjOut').textContent = `${cfg.slack.toFixed(0)} mm slack`;
+  // wear
+  const w = B.lining, gap = B.markDeg - n.thC;
+  $('#bpLiningOut').textContent = `${w.toFixed(1)} mm`;
+  if (w > LINING_LIMIT + 0.04) chip($('#chWear'), 'ok', 'Linings OK');
+  else if (w >= LINING_LIMIT - 0.04) chip($('#chWear'), 'warn', 'At the limit');
+  else chip($('#chWear'), 'bad', 'Below the limit');
+  $('#bpWear').textContent = w > LINING_LIMIT + 0.04
+    ? `With the brake on, the arrow on the cam tag stops ${gap.toFixed(0)}° short of the mark on the back plate.`
+    : w >= LINING_LIMIT - 0.04
+      ? 'With the brake on, the arrow lines up with the mark: the linings are at the 2.0 mm service limit. Renew both shoes.'
+      : 'With the brake on, the arrow passes the mark: the linings are below 2.0 mm. Renew both shoes now.';
+}
+function setBrake(key, fly = true) {
+  brakeKey = key; holding = false; holdBtn.classList.remove('down');
+  document.querySelectorAll('[data-brake]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.brake === key)));
+  const cfg = BRAKE_UI[key];
+  holdBtn.textContent = cfg.hold;
+  $('#bpTravelLabel').textContent = cfg.travelLabel;
+  travelIn.max = cfg.travelMax;
+  adjIn.max = cfg.slackMax; adjIn.value = cfg.slackMax - cfg.slack;
+  liningIn.value = BRAKES[key].lining;
+  $('#rowLamp').hidden = key !== 'r';
+  $('#bpLinkView').textContent = cfg.linkView;
+  $('#bpAdjHint').textContent = cfg.adjHint;
+  ['f', 'r'].forEach((k) => { if (k !== key) bstate[k].t = bstate[k].target = 0; });
+  travelIn.value = bstate[key].t;
+  renderSteps(); updateReadouts();
+  if (fly) { setViewButtons(''); flyTo(brakePose(key, 'hub')); }
+}
+function updateViewShift() {
+  const panelShown = stage === 'brakes' && !panelEl.hidden;
+  let x = 0, y = 0;
+  if (panelShown) {
+    const r = panelEl.getBoundingClientRect(), v = viewport.getBoundingClientRect();
+    if (v.width > 760) x = Math.round((r.right - v.left) / 2);
+    else y = -Math.round((v.bottom - r.top) / 2);
+  }
+  if (x !== viewShift.x || y !== viewShift.y) { viewShift = { x, y }; resize(); }
+}
+new ResizeObserver(() => updateViewShift()).observe(panelEl);
+function setStage(next) {
+  if (stage === next) return;
+  stage = next;
+  const brakes = stage === 'brakes';
+  document.querySelectorAll('[data-stage]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.stage === stage)));
+  $('#stage').classList.toggle('brakes-mode', brakes);
+  $('#eyebrow').textContent = brakes ? 'Stage 2 · Brakes' : 'Stage 1 · Outer body';
+  panelEl.hidden = !brakes; $('.bottombar').hidden = brakes; $('#faults').hidden = !brakes;
+  tDims.hidden = brakes; if (brakes) setDims(false);
+  explodeTarget = explodeNow = 0; explodeInput.value = 0; explodeOut.textContent = '0%'; applyExplode(0);
+  isolated = null; PARTS.forEach((p) => setVisible(p.id, true));
+  ['f', 'r'].forEach((k) => { bstate[k].t = bstate[k].target = 0; });
+  holding = false;
+  applyGhosts(); select(null);
+  updateViewShift();
+  if (brakes) setBrake(brakeKey, true); else goView('three');
+  syncUI();
+}
+document.querySelectorAll('[data-stage]').forEach((b) => b.addEventListener('click', () => { setStage(b.dataset.stage); closePanelOnMobile(); }));
+document.querySelectorAll('[data-brake]').forEach((b) => b.addEventListener('click', () => setBrake(b.dataset.brake)));
+$('#bpHubView').addEventListener('click', () => { setViewButtons(''); flyTo(brakePose(brakeKey, 'hub')); });
+$('#bpLinkView').addEventListener('click', () => { setViewButtons(''); flyTo(brakePose(brakeKey, 'link')); });
+$('#bpInside').addEventListener('click', (e) => { seeInside = !seeInside; e.currentTarget.setAttribute('aria-pressed', String(seeInside)); applyGhosts(); });
+$('#bpCollapse').addEventListener('click', (e) => {
+  const open = e.currentTarget.getAttribute('aria-expanded') === 'true';
+  e.currentTarget.setAttribute('aria-expanded', String(!open)); e.currentTarget.textContent = open ? 'Show' : 'Hide';
+  $('#bpBody').hidden = open;
+  updateViewShift();
+});
+function startHold(e) { if (e) e.preventDefault(); holding = true; holdBtn.classList.add('down'); bstate[brakeKey].target = BRAKE_UI[brakeKey].travelMax; }
+function endHold() { if (!holding) return; holding = false; holdBtn.classList.remove('down'); bstate[brakeKey].target = 0; }
+holdBtn.addEventListener('pointerdown', (e) => { startHold(e); try { holdBtn.setPointerCapture(e.pointerId); } catch (err) { /* capture is optional */ } });
+['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => holdBtn.addEventListener(ev, endHold));
+holdBtn.addEventListener('keydown', (e) => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) startHold(e); });
+holdBtn.addEventListener('keyup', (e) => { if (e.key === ' ' || e.key === 'Enter') endHold(); });
+holdBtn.addEventListener('contextmenu', (e) => e.preventDefault());
+travelIn.addEventListener('input', () => { holding = false; holdBtn.classList.remove('down'); bstate[brakeKey].t = bstate[brakeKey].target = +travelIn.value; });
+adjIn.addEventListener('input', () => { BRAKE_UI[brakeKey].slack = BRAKE_UI[brakeKey].slackMax - +adjIn.value; updateReadouts(); });
+liningIn.addEventListener('input', () => { setLining(BRAKES[brakeKey], +liningIn.value); applyGhosts(); updateReadouts(); });
+
+function updateBrakes(dt) {
+  const st = bstate[brakeKey], lim = brakeNumbers(brakeKey).limit, goal = Math.min(st.target, lim);
+  if (st.t > lim) st.t = lim;
+  if (st.t !== goal) {
+    const step = 80 * dt;
+    st.t = st.t < goal ? Math.min(goal, st.t + step) : Math.max(goal, st.t - step);
+  }
+  if (+travelIn.value !== st.t) travelIn.value = st.t;
+  const nf = brakeNumbers('f'), nr = brakeNumbers('r');
+  poseBrake(FB, nf.theta); poseBrake(RB, nr.theta);
+  poseLinkages(nf.tEff, nr.tEff, nf.theta, nr.theta);
+  [[FB, nf], [RB, nr]].forEach(([B, n]) => {
+    B.glowMat.opacity += ((n.contact ? 0.85 : 0) - B.glowMat.opacity) * Math.min(1, dt * 12);
+    const target = stage === 'brakes' && !reduceMotion() ? (n.contact ? 0 : 2.4) : 0;
+    B.omega += (target - B.omega) * Math.min(1, dt * (n.contact ? 10 : 1.5));
+    B.spin += B.omega * dt;
+    byId.get(B.key === 'f' ? 'fwheel' : 'rwheel').group.children[0].rotation.z = -B.spin;
+    B.drumGrp.rotation.z = -B.spin;
+  });
+  TAIL_GLOW.opacity += ((nr.tEff >= BRAKE_UI.r.switchAt ? 0.9 : 0) - TAIL_GLOW.opacity) * Math.min(1, dt * 14);
+  if (stage === 'brakes') updateReadouts();
+}
+
+/* =====================================================================
    Loop
    ===================================================================== */
-let first = true, camFrozen = false;
+let first = true, camFrozen = false, lastT = performance.now();
 function frame(now) {
+  const dt = Math.min(0.25, Math.max(0, (now - lastT) / 1000)); lastT = now;
+  updateBrakes(dt);
   if (tween) {
     const k = Math.min(1, (now - tween.start) / tween.ms), e = ease(k);
     camera.position.lerpVectors(tween.p0, tween.p1, e); controls.target.lerpVectors(tween.t0, tween.t1, e);
@@ -1283,6 +1889,8 @@ window.viewer = {
   view: (n) => { const p = viewPose(n); tween = null; camera.position.copy(p.pos); controls.target.copy(p.target); controls.update(); setViewButtons(n); },
   select, explode: (t) => { explodeTarget = explodeNow = t; applyExplode(t); },
   dims: () => tDims.click(), parts: PARTS, bbox: bboxAll,
+  stage: (n) => setStage(n), brake: (k, t, lining, slack) => { setBrake(k, false); if (lining != null) { setLining(BRAKES[k], lining); liningIn.value = lining; } if (slack != null) { BRAKE_UI[k].slack = slack; adjIn.value = BRAKE_UI[k].slackMax - slack; } bstate[k].t = bstate[k].target = t; },
+  brakeView: (k, w) => { const p = brakePose(k, w); tween = null; camera.position.copy(p.pos); controls.target.copy(p.target); controls.update(); },
   // used for lining the model up with reference photos
   photoCam: (pos, target, up, fov) => { camFrozen = true; scene.fog = null; tween = null; camera.position.set(...pos); camera.up.set(...up); camera.fov = fov; camera.updateProjectionMatrix(); camera.lookAt(...target); },
 };
