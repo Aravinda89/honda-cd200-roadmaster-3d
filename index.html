@@ -183,18 +183,23 @@ input[type="range"] { width: 100%; min-width: 0; accent-color: var(--accent); }
     </header>
 
     <section class="specs" aria-labelledby="specsTitle">
-      <h2 class="block-title" id="specsTitle">Published figures</h2>
+      <h2 class="block-title" id="specsTitle">Workshop manual figures</h2>
       <dl>
         <dt>Wheelbase</dt><dd>1,280 mm</dd>
         <dt>Overall length</dt><dd>1,990 mm</dd>
         <dt>Overall width</dt><dd>845 mm</dd>
         <dt>Overall height</dt><dd>1,105 mm</dd>
         <dt>Seat height</dt><dd>744 mm</dd>
-        <dt>Tyres (published)</dt><dd>3.00-17</dd>
+        <dt>Ground clearance</dt><dd>150 mm</dd>
+        <dt>Dry weight</dt><dd>122 kg</dd>
+        <dt>Tyres front / rear</dt><dd>3.00-17 4PR / 6PR</dd>
+        <dt>Tyre pressure F / R</dt><dd>25 / 32 psi</dd>
+        <dt>Brakes F / R</dt><dd>140 / 130 mm drum</dd>
+        <dt>Fork / rear travel</dt><dd>115 / 64 mm</dd>
         <dt>Engine</dt><dd>194 cc twin</dd>
         <dt>Bore × stroke</dt><dd>53 × 44 mm</dd>
       </dl>
-      <p class="src">Sources: Wikipedia, UltimateSpecs, MotorcycleDB. The owner's photos point to 18-inch wheels and a seat about 30 mm higher, so the model follows the photos there.</p>
+      <p class="src">Source: Haynes Owners Workshop Manual no. 572, CD/CM 185 &amp; 200 (CD200T column). The seat on the owner's bike measures about 770 mm in photos, so the model follows the photos there.</p>
     </section>
 
     <section aria-labelledby="partsTitle">
@@ -284,8 +289,8 @@ const Y_UP = V(0, 1, 0);
 /* =====================================================================
    Key geometry, in metres. The bike faces +x; the rider's right is +z.
    ===================================================================== */
-const R = 0.30;                      // tyre outer radius: 18-inch rim, measured from photos
-const RIM = 0.229;                   // 18-inch rim bead radius
+const R = 0.292;                     // 3.00-17 tyre outer radius (workshop manual tyre size)
+const RIM = 0.2159;                  // 17-inch rim bead radius
 const WB = 1.28;                     // wheelbase (published)
 const RA = V(0, R), FA = V(WB, R);   // rear and front axle
 const RAKE = 25 * DEG;               // measured from photos
@@ -658,12 +663,12 @@ const SEAT_TOP = Math.min(...Array.from({ length: 41 }, (_, i) => seatS(0.1 + 0.
   rod([0.455, 0.355, -0.118], [0.455, 0.355, 0.118], 0.011, MAT.chrome(), g);
 }
 {
-  const g = addPart('fork', 'chassis', 'Front fork', 'photo', 'Telescopic fork with long painted upper covers and alloy lower sliders. The rake of about 25 degrees was measured from your photos.', [0.16, 0, 0]);
+  const g = addPart('fork', 'chassis', 'Front fork', 'photo', 'Oil-damped telescopic fork with 31 mm chrome stanchions, painted upper covers and alloy lower sliders. Travel is 115 mm; each leg takes 135–140 cc of automatic transmission fluid. The rake of about 25 degrees was measured from photos.', [0.16, 0, 0]);
   const alloy = MAT.alloy(), chrome = MAT.chrome(), paint = MAT.paint(), blk = MAT.black();
   [-1, 1].forEach((s) => {
     const z = s * 0.09;
     lathe([[0, 0], [0.026, 0], [0.028, 0.025], [0.026, 0.07], [0.0255, 0.255], [0.022, 0.27], [0, 0.27]], forkPt(-0.035, 0, z), FD, alloy, g, 28);
-    rod(forkPt(0.225, 0, z), forkPt(0.295, 0, z), 0.0185, chrome, g, 20);
+    rod(forkPt(0.225, 0, z), forkPt(0.295, 0, z), 0.0155, chrome, g, 20);
     lathe([[0, 0], [0.029, 0], [0.031, 0.012], [0.031, 0.43], [0.027, 0.44], [0, 0.44]], forkPt(0.28, 0, z), FD, paint, g, 28);
     rod(forkPt(0.738, 0, z), forkPt(0.758, 0, z), 0.02, chrome, g, 20);
   });
@@ -672,7 +677,7 @@ const SEAT_TOP = Math.min(...Array.from({ length: 41 }, (_, i) => seatS(0.1 + 0.
   rod(forkPt(0, 0, -0.12), forkPt(0, 0, 0.12), 0.009, MAT.chrome(), g);
 }
 {
-  const g = addPart('swingarm', 'chassis', 'Swingarm', 'est', 'Pivots just behind the engine and carries the rear axle. Chain tension is set by sliding the axle along the arm ends.', [-0.1, -0.08, 0]);
+  const g = addPart('swingarm', 'chassis', 'Swingarm', 'est', 'Swinging arm fork that pivots just behind the engine and carries the rear axle. Chain tension is set by sliding the axle along the arm ends. Pivot bolt torque 4.0–5.0 kgf m.', [-0.1, -0.08, 0]);
   const blk = MAT.black();
   [-1, 1].forEach((s) => {
     const a = V(0.455, 0.355, 0.095 * s), b = V(-0.02, R - 0.002, 0.095 * s), d = b.clone().sub(a);
@@ -694,7 +699,7 @@ function shock(parent, lower, upper, paint, chrome, blk) {
   lathe([[0, 0.205], [0.034, 0.205], [0.036, 0.215], [0.036, L - 0.022], [0.03, L - 0.012], [0, L - 0.012]], V(0, 0, 0), Y_UP, paint, g, 32);
 }
 {
-  const g = addPart('shocks', 'chassis', 'Rear shocks', 'photo', 'Twin shock absorbers with painted upper covers and chrome lower bodies, running from the swingarm to the rear frame.');
+  const g = addPart('shocks', 'chassis', 'Rear shocks', 'photo', 'Twin oil-filled shock absorbers with painted upper covers and chrome lower bodies. Rear wheel travel is 64 mm; spring free length is 182.6 mm new, 180 mm service limit.');
   [-1, 1].forEach((s) => {
     const sg = sideGroup(g, [0, 0, 0.22 * s]);
     shock(sg, V(0.035, 0.335, 0.2 * s), V(0.135, 0.645, 0.185 * s), MAT.paint(), MAT.chrome(), MAT.black());
@@ -755,11 +760,11 @@ function wheel(parent, brakeSide) {
   [-1, 1].forEach((z) => { const n = mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.012, 6), chrome, parent); n.rotation.x = Math.PI / 2; n.position.z = z * 0.106; });
 }
 {
-  const g = addPart('fwheel', 'wheels', 'Front wheel', 'photo', 'Wire-spoked chrome rim with a ribbed tyre. Modelled as an 18-inch wheel because that matches your photos; the published spec says 3.00-17, so check the size moulded on the sidewall.', [0.34, 0, 0]);
+  const g = addPart('fwheel', 'wheels', 'Front wheel', 'spec', '17-inch chromed steel rim with steel spokes and a 3.00-17 4-ply ribbed tyre. Pressure 25 psi cold.', [0.34, 0, 0]);
   const grp = new THREE.Group(); grp.position.copy(FA); g.add(grp); wheel(grp, -1);
 }
 {
-  const g = addPart('fbrake', 'wheels', 'Front drum brake', 'photo', 'Expanding-shoe drum brake on the left of the front hub, worked by cable from the right handlebar lever.', [0.34, 0, -0.18]);
+  const g = addPart('fbrake', 'wheels', 'Front drum brake', 'photo', 'Single-leading-shoe drum brake, 140 mm drum, on the left of the front hub. Worked by cable from the right handlebar lever. Linings are 4.0 mm new, 2.0 mm service limit.', [0.34, 0, -0.18]);
   const grp = new THREE.Group(); grp.position.copy(FA); g.add(grp);
   const plate = mesh(new THREE.CylinderGeometry(0.083, 0.086, 0.01, 48), MAT.casting(), grp); plate.rotation.x = Math.PI / 2; plate.position.z = -0.06;
   const ring = mesh(new THREE.TorusGeometry(0.06, 0.004, 8, 48), MAT.alloy(), grp); ring.position.z = -0.066;
@@ -767,11 +772,11 @@ function wheel(parent, brakeSide) {
   rod([0.0, -0.05, -0.078], [-0.04, -0.07, -0.088], 0.008, MAT.casting(), grp);
 }
 {
-  const g = addPart('rwheel', 'wheels', 'Rear wheel', 'photo', 'Wire-spoked chrome rim, modelled as 18-inch to match your photos (published spec: 3.00-17).', [-0.36, 0, 0]);
+  const g = addPart('rwheel', 'wheels', 'Rear wheel', 'spec', '17-inch chromed steel rim with steel spokes and a 3.00-17 6-ply tyre. Pressure 32 psi cold, or 40 psi when carrying over 90 kg.', [-0.36, 0, 0]);
   const grp = new THREE.Group(); grp.position.copy(RA); g.add(grp); wheel(grp, 1);
 }
 {
-  const g = addPart('rbrake', 'wheels', 'Rear drum brake', 'est', 'Expanding-shoe drum brake on the right of the rear hub, worked by a rod from the right foot pedal.', [-0.36, 0, 0.18]);
+  const g = addPart('rbrake', 'wheels', 'Rear drum brake', 'spec', 'Single-leading-shoe drum brake, 130 mm drum, on the right of the rear hub. Worked by a rod from the right foot pedal. Linings are 4.0 mm new, 2.0 mm service limit.', [-0.36, 0, 0.18]);
   const grp = new THREE.Group(); grp.position.copy(RA); g.add(grp);
   const plate = mesh(new THREE.CylinderGeometry(0.083, 0.086, 0.01, 48), MAT.casting(), grp); plate.rotation.x = Math.PI / 2; plate.position.z = 0.06;
   const ring = mesh(new THREE.TorusGeometry(0.06, 0.004, 8, 48), MAT.alloy(), grp); ring.position.z = 0.066;
@@ -1279,7 +1284,7 @@ window.viewer = {
   select, explode: (t) => { explodeTarget = explodeNow = t; applyExplode(t); },
   dims: () => tDims.click(), parts: PARTS, bbox: bboxAll,
   // used for lining the model up with reference photos
-  photoCam: (pos, target, up, fov) => { camFrozen = true; tween = null; camera.position.set(...pos); camera.up.set(...up); camera.fov = fov; camera.updateProjectionMatrix(); camera.lookAt(...target); },
+  photoCam: (pos, target, up, fov) => { camFrozen = true; scene.fog = null; tween = null; camera.position.set(...pos); camera.up.set(...up); camera.fov = fov; camera.updateProjectionMatrix(); camera.lookAt(...target); },
 };
 </script>
 </body>
