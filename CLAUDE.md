@@ -18,7 +18,8 @@ npm run check        # loads the page headless, fails on any script error, saves
 ```
 
 `npm run check -- --shots=f_on,r_worn --size=390x844 --dark` runs a subset at phone size in dark
-mode. Shots are defined at the top of `tools/check.mjs`. Screenshots land in `tools/out/` (ignored
+mode. `npm run check -- --details` adds close-ups (`d_tank`, `d_speedo`, …) for comparing details
+with the owner's photos. Shots are defined at the top of `tools/check.mjs`. Screenshots land in `tools/out/` (ignored
 by git). Headless rendering is software-only and slow (2–4 frames a second): that is expected.
 
 There is no build step. `index.html` loads `js/app.js` as an ES module; three.js 0.160.0 comes from
@@ -134,7 +135,9 @@ are fine and should be credited to the manual.
   specifications; the panel shows both.
 - **Rake** about 25°, measured from photos.
 - **Front brake arm direction and the cable / rod routing** follow the manual's drawings (figs 5.1,
-  5.2 and photos 3.3, 8.3), not yet the owner's bike. Close-up photos of both hubs are needed.
+  5.2 and photos 3.3, 8.3), not yet the owner's bike. Photos set3-25, set2-03 and set1-01 show the
+  owner's front arm hanging down in front of the fork leg; change it once a square-on photo shows
+  where the cable meets the arm (see `docs/measurements.md`, close-up set).
 - **Brake behaviour**: single leading shoe drums, both shoes on one anchor pin, flat cam. Free play
   10–20 mm at the lever end, 20–30 mm at the pedal; stop lamp at about 20 mm of pedal travel;
   linings 4.0 mm new, 2.0 mm limit; the wear tag arrow reaches the plate mark at the limit.
@@ -165,6 +168,7 @@ assume it.
 
 - Tyre size moulded on both sidewalls.
 - Ground to top of seat, measured with a tape.
-- Close-up photos of both wheel hubs and brake plates (arm direction, cable and rod routing).
+- Square-on close-ups of the front hub (left side) and rear hub (right side): arm, cable / rod end,
+  adjuster, torque arm, wear indicator. The close-up set3 has no straight hub shots.
 - Straight-on photos of the right side and the rear.
 - For stage 3: photos of both engine sides with the covers on.

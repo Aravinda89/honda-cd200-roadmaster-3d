@@ -18,16 +18,29 @@ const tankS = superLoft({
   const elev = (phi) => (phi < Math.PI / 2 ? phi : Math.PI - phi);
   const geo = loftGeometry(tankS, 80, 80, (u, phi) => (u > 0.03 && u < 0.93 && elev(phi) > -1.25 && elev(phi) < 0.88 ? 1 : 0));
   mesh(geo, [paint, chrome], g);
-  const knee = MAT.textured(TEX.knee, 0.8), badge = MAT.black(), rim = MAT.chrome();
+  const knee = MAT.textured(TEX.knee, 0.8);
   [1, -1].forEach((side) => {
     mesh(surfPatch(tankS, { uc: 0.31, du: 0.24, ec: 0.0, de: 0.6, side, off: 0.004, sq: 3.4 }), knee, g);
-    mesh(surfPatch(tankS, { uc: 0.743, du: 0.118, ec: 0.365, de: 0.47, side, off: 0.0035, sq: 2 }), badge, g);
-    mesh(surfPatch(tankS, { uc: 0.743, du: 0.098, ec: 0.365, de: 0.39, side, off: 0.0048, sq: 2 }), rim, g);
+    // the patch's texture runs front-to-back on both sides, so the left side's copy is flipped to keep HONDA readable
+    let map = TEX.tankBadge[side > 0 ? 1 : 0];
+    if (side < 0) { map = map.clone(); map.wrapS = THREE.RepeatWrapping; map.repeat.x = -1; map.offset.x = 1; map.needsUpdate = true; }
+    mesh(surfPatch(tankS, { uc: 0.73, du: 0.12, ec: 0.37, de: 0.44, side, off: 0.0035, sq: 6, even: true }), MAT.badge(map), g, false);
   });
+  // bayonet filler cap with four lobes and a hinged centre flap (photo set3-21)
   const top = tankS(0.69, Math.PI / 2), n = tankS(0.695, Math.PI / 2).sub(tankS(0.685, Math.PI / 2));
   const capN = V(-n.y, n.x).normalize();
-  const cap = mesh(new THREE.CylinderGeometry(0.034, 0.036, 0.016, 36), MAT.chrome(), g);
-  cap.position.copy(top).addScaledVector(capN, 0.005); cap.quaternion.copy(qAlong(capN));
+  const cg = new THREE.Group(); cg.position.copy(top); cg.quaternion.copy(qAlong(capN)); g.add(cg);
+  const lobes = new THREE.Shape();
+  for (let i = 0; i <= 96; i++) {
+    const a = 2 * Math.PI * i / 96, r = 0.03 + 0.007 * Math.pow(Math.max(0, Math.cos(4 * a)), 3);
+    if (i) lobes.lineTo(r * Math.cos(a), r * Math.sin(a)); else lobes.moveTo(r, 0);
+  }
+  const lg = new THREE.ExtrudeGeometry(lobes, { depth: 0.01, bevelEnabled: true, bevelThickness: 0.003, bevelSize: 0.003, bevelSegments: 3, curveSegments: 8 });
+  lg.rotateX(-Math.PI / 2);
+  const ch = MAT.chrome();
+  mesh(lg, ch, cg);
+  mesh(new THREE.CylinderGeometry(0.018, 0.021, 0.006, 32), ch, cg).position.y = 0.0155;
+  mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.002, 32), MAT.black(), cg).position.y = 0.0188;
 }
 const seatS = superLoft({
   x0: 0.163, x1: 0.53, capR: 6, capF: 3.2,
@@ -63,14 +76,15 @@ const SEAT_TOP = Math.min(...Array.from({ length: 41 }, (_, i) => seatS(0.1 + 0.
   [-0.05, -0.17, -0.27, -0.335].forEach((x) => rod([x, T - 0.005, -Z], [x, T - 0.005, Z], 0.007, ch, g));
 }
 {
-  const g = addPart('sidecovers', 'body', 'Side covers', 'photo', 'Painted panels under the seat with a chrome front section and a model badge. They close off the space between the frame rails behind the engine.');
+  const g = addPart('sidecovers', 'body', 'Side covers', 'photo', 'Painted panels under the seat with a plain chrome front section and the ROAD MASTER CD200 badge. They close off the space between the frame rails behind the engine.');
   [1, -1].forEach((s) => {
     const sg = sideGroup(g, [0, 0, 0.28 * s]);
     const holder = new THREE.Group(); holder.scale.z = s; sg.add(holder);
     extrude(roundRectShape(0.199, 0.472, 0.49, 0.644, 0.035), 0.026, 0.008, MAT.paint(), holder, 0.118);
-    extrude(roundRectShape(0.462, 0.48, 0.53, 0.644, 0.026), 0.032, 0.008, MAT.chrome(), holder, 0.116);
-    for (let i = 0; i < 4; i++) rbox(0.042, 0.006, 0.004, 0.002, MAT.black(), holder, V(0.5, 0.52 + i * 0.03, 0.1575));
-    rbox(0.15, 0.045, 0.006, 0.006, MAT.chrome(), holder, V(0.335, 0.57, 0.155));
+    extrude(roundRectShape(0.462, 0.48, 0.53, 0.644, 0.03), 0.03, 0.012, MAT.chrome(), holder, 0.114);
+    // badge size and place measured from photo set3-01; kept outside the mirrored holder so the text reads on both sides
+    const badge = mesh(new THREE.PlaneGeometry(0.2, 0.064), MAT.badge(TEX.sideBadge), sg, false);
+    badge.position.set(0.335, 0.558, 0.1535 * s); if (s < 0) badge.rotation.y = Math.PI;
   });
 }
 {

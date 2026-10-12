@@ -24,10 +24,11 @@ function indicator(parent, center, dir, stalkFrom, chrome, amber) {
   [-1, 1].forEach((s) => rod(forkPt(0.618, 0.0, s * 0.09), HL.clone().add(V(-0.06, 0, s * 0.075)), 0.009, MAT.paint(), g));
 }
 {
-  const g = addPart('speedo', 'lights', 'Speedometer', 'photo', 'Square instrument housing above the headlamp.', [0.16, 0.28, 0]);
+  const g = addPart('speedo', 'lights', 'Speedometer', 'photo', 'Rectangular instrument in a black housing above the headlamp. The dial reads 0–160 km/h, with the odometer below the needle and a green band marking the speed range for each of the four gears. Beside the dial are the TURN, NEUTRAL and HIGH BEAM warning lamps.', [0.16, 0.28, 0]);
   const sp = new THREE.Group(); sp.position.copy(forkPt(0.755, 0.07)); sp.rotation.z = 0.5; g.add(sp);
-  rbox(0.1, 0.06, 0.15, 0.012, MAT.black(), sp);
-  rbox(0.104, 0.012, 0.154, 0.005, MAT.chrome(), sp, V(0, 0.026, 0));
+  const blk = MAT.black();
+  rbox(0.1, 0.06, 0.15, 0.012, blk, sp);
+  rbox(0.104, 0.012, 0.154, 0.005, blk, sp, V(0, 0.026, 0));
   const face = new THREE.PlaneGeometry(0.13, 0.084); face.rotateX(-Math.PI / 2); face.rotateY(-Math.PI / 2);
   mesh(face, new THREE.MeshStandardMaterial({ map: TEX.dial, roughness: 0.35, metalness: 0 }), sp, false).position.y = 0.0325;
   rod(forkPt(0.735, -0.01), forkPt(0.755, 0.055), 0.008, MAT.black(), g);
@@ -47,10 +48,15 @@ function indicator(parent, center, dir, stalkFrom, chrome, amber) {
   });
 }
 {
-  const g = addPart('tail', 'lights', 'Tail light', 'photo', 'Large red tail and stop lamp with a round centre lens, hung under the back of the carrier above the number plate.', [-0.5, 0.12, 0]);
-  rbox(0.055, 0.12, 0.21, 0.014, MAT.chrome(), g, V(-0.35, 0.672, 0));
-  rbox(0.016, 0.11, 0.2, 0.012, MAT.red(), g, V(-0.382, 0.672, 0));
-  const bulge = mesh(new THREE.CylinderGeometry(0.034, 0.036, 0.02, 32), MAT.red(), g); bulge.rotation.z = Math.PI / 2; bulge.position.set(-0.394, 0.66, 0);
+  const g = addPart('tail', 'lights', 'Tail light', 'photo', 'Large red tail and stop lamp, hung under the back of the carrier above the number plate. The one-piece lens is held by two screws; its round centre boss carries the rear reflector.', [-0.5, 0.12, 0]);
+  // shape from photo set3-15: rectangular red lens on a dark base, with a large round boss low in the centre
+  const red = MAT.red();
+  rbox(0.03, 0.1, 0.19, 0.01, MAT.black(), g, V(-0.343, 0.672, 0));
+  rbox(0.032, 0.1, 0.205, 0.014, red, g, V(-0.372, 0.672, 0));
+  lathe([[0, 0], [0.05, 0], [0.05, 0.012], [0.044, 0.023], [0.036, 0.028], [0, 0.028]], V(-0.38, 0.655, 0), V(-1, 0), red, g, 40);
+  const refl = MAT.red(); refl.color.set(0x8f0f15); refl.roughness = 0.4;
+  const rd = mesh(new THREE.CircleGeometry(0.029, 36), refl, g, false); rd.rotation.y = -Math.PI / 2; rd.position.set(-0.4085, 0.655, 0);
+  [-1, 1].forEach((s) => rod([-0.374, 0.66, 0.085 * s], [-0.39, 0.66, 0.085 * s], 0.004, MAT.chrome(), g));   // lens screws
   [-1, 1].forEach((s) => rod([-0.39, 0.748, 0.07 * s], [-0.35, 0.732, 0.07 * s], 0.006, MAT.chrome(), g));
 }
 {

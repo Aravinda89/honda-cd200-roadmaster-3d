@@ -45,3 +45,25 @@ Single-photo values (set2-01): mirror centre about (0.76, 1.15), near grip end a
 
 Overall model check after corrections: length 1,998 mm (manual 1,990), height to bar top
 1,117 mm (manual 1,105), seat top about 772 mm (manual 744; follows the bike).
+
+## Close-up set (`set3-01` to `set3-26`, taken 2026-10-10)
+
+Detail photos, not fitted to a camera, so used for shape and layout rather than position.
+`npm run check -- --details` saves matching model close-ups (`d_*`) for side-by-side checks.
+
+| Part | Photo | What the model now follows |
+|---|---|---|
+| Speedometer | set3-09, set3-20 | Black housing and bezel; 0–160 km/h dial, odometer, green gear-range band 1–4; TURN / NEUTRAL / HIGH BEAM lamps in a column right of the dial |
+| Side cover badge | set3-01 | ROAD MASTER plaques with crest over CD200, about 200 × 64 mm; chrome front section is plain (no slots) |
+| Tank badge | set3-10, set2-03 | Honda wing in a black circle about 80 mm across, wing pointing to the rear on both sides, just ahead of the knee pad |
+| Filler cap | set3-21 | Chrome bayonet cap with four lobes and a hinged centre flap |
+| Rear shocks | set3-02, set3-17 | Spring fully covered: painted upper cover (top ~40 %), chrome lower cover (~25 %), alloy damper body (~22 %) |
+| Tail light | set3-15 | Stanley one-piece red lens on a dark base, large round centre boss with reflector, two lens screws |
+| Handlebar switches | set3-18, set3-19 | Bare alloy housings |
+
+Not yet used: the ignition switch under the speedometer (set3-20; black HONDA cover with the key
+barrel, for stage 5), the engine left side (set3-03, set3-23, set3-24; for stage 3), and the front
+hub (set3-25). The front hub photo, with set2-03 and set1-01, shows the **front brake arm hanging
+down in front of the fork leg**, not pointing back as in the manual's drawing that the model
+follows. The cable's path to the arm is not visible, so the brake model is unchanged until a
+square-on photo of the left side of the front hub is available.

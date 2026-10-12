@@ -55,22 +55,76 @@ const TEX = {
     for (let x = 0; x < w; x += 9) { g.fillStyle = 'rgba(255,255,255,0.45)'; g.fillRect(x, 0, 3, h); g.fillStyle = 'rgba(60,75,85,0.2)'; g.fillRect(x + 4, 0, 2, h); }
     for (let y = 0; y < h; y += 28) { g.fillStyle = 'rgba(60,75,85,0.14)'; g.fillRect(0, y, w, 1); }
   }),
-  dial: canvasTexture(256, 168, (g, w, h) => {
-    g.fillStyle = '#0c0e0f'; g.fillRect(0, 0, w, h);
-    const cx = w / 2, cy = h * 0.8, r = h * 0.66;
-    g.strokeStyle = '#e9edef'; g.fillStyle = '#e9edef'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.font = '600 15px "IBM Plex Mono", monospace';
-    for (let i = 0; i <= 24; i++) {
-      const a = Math.PI * (1.1 - 1.2 * i / 24), major = i % 4 === 0;
-      g.lineWidth = major ? 3 : 1.5;
-      g.beginPath(); g.moveTo(cx + Math.cos(a) * r * (major ? 0.84 : 0.9), cy - Math.sin(a) * r * (major ? 0.84 : 0.9)); g.lineTo(cx + Math.cos(a) * r, cy - Math.sin(a) * r); g.stroke();
-      if (major) g.fillText(String(i * 5), cx + Math.cos(a) * r * 0.66, cy - Math.sin(a) * r * 0.66);
+  // instrument face as on the owner's bike (photo set3-20): 0–160 km/h dial with a green gear-range
+  // band and odometer on the left, TURN / NEUTRAL / HIGH BEAM lamps in a column on the right
+  dial: canvasTexture(512, 330, (g, w, h) => {
+    g.fillStyle = '#0b0d0e'; g.fillRect(0, 0, w, h);
+    const cx = 188, cy = 168, r = 152, ang = (v) => (232 - 1.675 * v) * DEG;
+    const at = (v, k) => [cx + Math.cos(ang(v)) * r * k, cy - Math.sin(ang(v)) * r * k];
+    g.strokeStyle = g.fillStyle = '#eceee6'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (let v = 0; v <= 165; v += 5) {
+      const major = v % 10 === 0;
+      g.lineWidth = major ? 6 : 3;
+      g.beginPath(); g.moveTo(...at(v, major ? 0.8 : 0.87)); g.lineTo(...at(v, 1)); g.stroke();
     }
-    const na = Math.PI * (1.1 - 1.2 * 0.3);
-    g.strokeStyle = '#e8432f'; g.lineWidth = 3; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(na) * r * 0.8, cy - Math.sin(na) * r * 0.8); g.stroke();
-    g.fillStyle = '#2a2e31'; g.beginPath(); g.arc(cx, cy, 9, 0, Math.PI * 2); g.fill();
-    g.fillStyle = '#e9edef'; g.font = '500 10px "IBM Plex Mono", monospace'; g.fillText('km/h', cx, cy - 26);
+    g.font = '600 25px Arial, sans-serif';
+    for (let v = 0; v <= 160; v += 20) g.fillText(String(v), ...at(v, 0.63));
+    g.strokeStyle = '#1f9a5a'; g.fillStyle = '#1f9a5a'; g.lineWidth = 4;
+    g.beginPath(); g.arc(cx, cy, r * 0.43, -ang(30), -ang(120)); g.stroke();
+    g.font = '600 14px Arial, sans-serif';
+    [[30, '1'], [55, '2'], [95, '3'], [120, '4']].forEach(([v, t]) => g.fillText(t, ...at(v, 0.36)));
+    g.fillStyle = '#d8d9cf'; g.fillRect(cx + 4, cy + 38, 112, 32);
+    g.fillStyle = '#111'; g.font = '600 24px "IBM Plex Mono", monospace';
+    for (let i = 0; i < 5; i++) { g.fillStyle = '#111'; g.fillRect(cx + 7 + i * 22, cy + 41, 20, 26); g.fillStyle = '#e6e6e0'; g.fillText('0', cx + 17 + i * 22, cy + 55); }
+    g.fillStyle = '#eceee6'; g.font = '600 20px Arial, sans-serif'; g.fillText('km/h', cx + 62, cy + 98);
+    g.strokeStyle = '#e9dfb8'; g.lineWidth = 7; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(...at(180, 0.12)); g.lineTo(...at(0, 0.8)); g.stroke();
+    g.fillStyle = '#e9dfb8'; g.beginPath(); g.arc(cx, cy, 15, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#eceee6'; g.lineWidth = 3; g.strokeRect(384, 22, 112, 286);
+    [['TURN', '#5d5c34'], ['NEUTRAL', '#1d6b45'], ['HIGH BEAM', '#1f3a7a']].forEach(([t, c], i) => {
+      const y = 36 + i * 92;
+      g.fillStyle = c; g.fillRect(408, y, 64, 44);
+      g.fillStyle = '#eceee6'; g.font = '700 15px Arial, sans-serif'; g.fillText(t, 440, y + 62);
+    });
   }),
+  sideBadge: canvasTexture(1024, 328, (g, w, h) => {
+    // ROAD MASTER / CD200 badge on the side covers (photo set3-01); transparent outside the badge
+    const chrome = '#dfe3e6', dark = '#15171a';
+    const plaque = (x0, x1, text) => {
+      g.fillStyle = chrome; g.beginPath(); g.roundRect(x0 - 8, 30, x1 - x0 + 16, 108, 16); g.fill();
+      g.fillStyle = dark; g.beginPath(); g.roundRect(x0, 38, x1 - x0, 92, 10); g.fill();
+      g.fillStyle = '#e0913f'; g.font = 'italic 700 68px Georgia, "Times New Roman", serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(text, (x0 + x1) / 2, 86);
+    };
+    plaque(30, 420, 'ROAD'); plaque(604, 994, 'MASTER');
+    g.fillStyle = chrome; g.beginPath(); g.ellipse(512, 92, 92, 80, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = dark; g.beginPath(); g.ellipse(512, 92, 70, 60, 0, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = chrome; g.lineWidth = 9; g.beginPath(); g.moveTo(512, 48); g.lineTo(552, 92); g.lineTo(512, 136); g.lineTo(472, 92); g.closePath(); g.stroke();
+    g.fillStyle = chrome; g.beginPath(); g.roundRect(150, 150, 724, 162, 18); g.fill();
+    g.fillStyle = dark; g.beginPath(); g.roundRect(160, 160, 704, 142, 12); g.fill();
+    g.font = '800 132px "Arial Black", Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.lineWidth = 10; g.strokeStyle = chrome; g.strokeText('CD 200', 512, 234);
+    g.fillStyle = dark; g.fillText('CD 200', 512, 234);
+  }),
+  // Honda wing badge on the tank (photo set3-10). The wing points to the rear on each side.
+  // The circle is about 80 mm across on the bike (photo set2-03); the patch it is drawn on is about 106 mm square.
+  tankBadge: [1, -1].map((wing) => canvasTexture(512, 512, (g) => {
+    const cx = 256 - 18 * wing, cy = 280, chrome = '#dfe3e6';
+    g.fillStyle = '#15171a'; g.beginPath(); g.arc(cx, cy, 186, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = chrome; g.lineWidth = 14; g.stroke();
+    // wing: five feathers fanning up and back from a pivot left of centre
+    g.save(); g.translate(cx - 120 * wing, cy + 10); g.scale(wing, 1); g.lineCap = 'round';
+    for (let i = 4; i >= 0; i--) {
+      const a = (10 + 6.5 * i) * DEG, len = 190 + 34 * i, tip = [Math.cos(a) * len, -Math.sin(a) * len];
+      g.strokeStyle = '#2f3235'; g.lineWidth = 36; g.beginPath(); g.moveTo(20, 0); g.lineTo(...tip); g.stroke();
+      g.strokeStyle = '#efe9d6'; g.lineWidth = 29; g.beginPath(); g.moveTo(20, 0); g.lineTo(...tip); g.stroke();
+    }
+    g.fillStyle = '#efe9d6'; g.beginPath(); g.ellipse(52, -20, 58, 34, -0.35, 0, Math.PI * 2); g.fill();
+    g.restore();
+    g.font = '700 84px Georgia, "Times New Roman", serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.lineWidth = 10; g.strokeStyle = '#0b0c0d'; g.strokeText('HONDA', cx, cy + 104);
+    g.fillStyle = chrome; g.fillText('HONDA', cx, cy + 104);
+  })),
 };
 
 /* ---------- materials (each part makes its own, so highlighting stays per part) ---------- */
@@ -87,6 +141,7 @@ const MAT = {
   plate: () => new THREE.MeshStandardMaterial({ color: 0xe6eaec, metalness: 0.1, roughness: 0.55 }),
   glass: () => new THREE.MeshStandardMaterial({ color: 0xdfe8ee, metalness: 1, roughness: 0.03 }),
   textured: (map, rough = 0.55) => new THREE.MeshStandardMaterial({ color: 0xffffff, map, metalness: 0.05, roughness: rough }),
+  badge: (map) => new THREE.MeshStandardMaterial({ color: 0xffffff, map, alphaTest: 0.5, metalness: 0.45, roughness: 0.3 }),
 };
 
 /* ---------- geometry helpers ---------- */
@@ -175,16 +230,28 @@ function loftGeometry(S, nu, nv, matFn) {
   g.setIndex(idx); g.computeVertexNormals();
   return g;
 }
-/* A rounded patch laid on a loft surface (knee pads, badges). side: +1 right, -1 left. */
-function surfPatch(S, { uc, du, ec, de, side = 1, off = 0.004, sq = 4, nr = 10, na = 56 }) {
+/* A rounded patch laid on a loft surface (knee pads, badges). side: +1 right, -1 left.
+   even: space the patch by distance over the surface rather than by angle, so a texture keeps its shape
+   where the loft's angle spacing is uneven (near the tank's widest line). */
+function surfPatch(S, { uc, du, ec, de, side = 1, off = 0.004, sq = 4, nr = 10, na = 56, even = false }) {
   const phiOf = (el) => (side > 0 ? el : Math.PI - el), h = 1e-3;
   const pt = (u, el) => {
     const ph = phiOf(el), P = S(u, ph);
     const n = S(u + h, ph).sub(S(u - h, ph)).cross(S(u, ph + h).sub(S(u, ph - h))).normalize();
     return P.addScaledVector(n, off);
   };
+  let elOf = (b) => ec + b * de;
+  if (even) {
+    const n = 64, el = (i) => ec - de + 2 * de * i / n, cum = [0];
+    for (let i = 1; i <= n; i++) cum.push(cum[i - 1] + pt(uc, el(i)).distanceTo(pt(uc, el(i - 1))));
+    elOf = (b) => {
+      const t = (b + 1) / 2 * cum[n]; let i = 1;
+      while (i < n && cum[i] < t) i++;
+      return el(i - 1 + (t - cum[i - 1]) / (cum[i] - cum[i - 1]));
+    };
+  }
   const pos = [], uv = [], idx = [];
-  const add = (a, b) => { const P = pt(uc + a * du, ec + b * de); pos.push(P.x, P.y, P.z); uv.push(0.5 + 0.5 * a, 0.5 + 0.5 * b); };
+  const add = (a, b) => { const P = pt(uc + a * du, elOf(b)); pos.push(P.x, P.y, P.z); uv.push(0.5 + 0.5 * a, 0.5 + 0.5 * b); };
   add(0, 0);
   for (let r = 1; r <= nr; r++) for (let j = 0; j < na; j++) {
     const al = 2 * Math.PI * j / na, c = Math.cos(al), s = Math.sin(al);

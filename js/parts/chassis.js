@@ -47,22 +47,21 @@ import { FD, MAT, R, V, Y_UP, addPart, forkPt, lathe, mesh, qAlong, rbox, rod, s
   rod([0.4, 0.349, -0.095], [0.4, 0.349, 0.095], 0.013, blk, g);
   rod([0.455, 0.355, -0.108], [0.455, 0.355, 0.108], 0.021, blk, g, 20);
 }
-function shock(parent, lower, upper, paint, chrome, blk) {
+// The spring is fully enclosed (photos set3-02, set3-17): painted upper cover, chrome lower cover,
+// alloy damper body below it. Proportions along the shock are measured from set3-02.
+function shock(parent, lower, upper, paint, chrome, blk, alloy) {
   const d = upper.clone().sub(lower), L = d.length();
   const g = new THREE.Group(); g.position.copy(lower); g.quaternion.copy(qAlong(d)); parent.add(g);
   [0, L].forEach((y) => { const e = mesh(new THREE.TorusGeometry(0.013, 0.0055, 8, 20), blk, g); e.position.y = y; });
-  lathe([[0, 0.012], [0.019, 0.012], [0.02, 0.03], [0.02, 0.12], [0.029, 0.125], [0.029, 0.14], [0, 0.14]], V(0, 0, 0), Y_UP, chrome, g, 28);
-  const helix = new (class extends THREE.Curve {
-    getPoint(t, tgt = new THREE.Vector3()) { const a = t * Math.PI * 2 * 4.5; return tgt.set(0.025 * Math.cos(a), 0.14 + t * 0.09, 0.025 * Math.sin(a)); }
-  })();
-  mesh(new THREE.TubeGeometry(helix, 160, 0.0042, 6, false), chrome, g);
-  lathe([[0, 0.205], [0.034, 0.205], [0.036, 0.215], [0.036, L - 0.022], [0.03, L - 0.012], [0, L - 0.012]], V(0, 0, 0), Y_UP, paint, g, 32);
+  lathe([[0, 0.012], [0.02, 0.012], [0.024, 0.022], [0.024, 0.25 * L], [0, 0.25 * L]], V(0, 0, 0), Y_UP, alloy, g, 28);
+  lathe([[0, 0.24 * L], [0.031, 0.24 * L], [0.033, 0.25 * L + 0.004], [0.033, 0.5 * L], [0, 0.5 * L]], V(0, 0, 0), Y_UP, chrome, g, 28);
+  lathe([[0, 0.49 * L], [0.036, 0.49 * L], [0.037, 0.49 * L + 0.006], [0.037, L - 0.022], [0.03, L - 0.012], [0, L - 0.012]], V(0, 0, 0), Y_UP, paint, g, 32);
 }
 {
-  const g = addPart('shocks', 'chassis', 'Rear shocks', 'photo', 'Twin oil-filled shock absorbers with painted upper covers and chrome lower bodies. Rear wheel travel is 64 mm; spring free length is 182.6 mm new, 180 mm service limit.');
+  const g = addPart('shocks', 'chassis', 'Rear shocks', 'photo', 'Twin oil-filled shock absorbers. The springs are hidden under a painted upper cover and a chrome lower cover, with the alloy damper body below. Rear wheel travel is 64 mm; spring free length is 182.6 mm new, 180 mm service limit.');
   [-1, 1].forEach((s) => {
     const sg = sideGroup(g, [0, 0, 0.22 * s]);
-    shock(sg, V(0.035, 0.335, 0.2 * s), V(0.135, 0.645, 0.185 * s), MAT.paint(), MAT.chrome(), MAT.black());
+    shock(sg, V(0.035, 0.335, 0.2 * s), V(0.135, 0.645, 0.185 * s), MAT.paint(), MAT.chrome(), MAT.black(), MAT.alloy());
     rod([0.035, 0.335, 0.105 * s], [0.035, 0.335, 0.19 * s], 0.008, MAT.black(), sg);
   });
 }

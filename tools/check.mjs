@@ -2,6 +2,7 @@
 //
 //   npm run check                 load the page, fail on any script error, save the standard screenshots
 //   npm run check -- --shots=f_on,r_worn --size=390x844 --dark
+//   npm run check -- --details     also saves the d_* close-ups used to compare details with photos
 //
 // Serves the project folder on a local port, opens it in headless Chromium (Playwright) and drives
 // the page through window.viewer (defined at the bottom of js/app.js). Screenshots go to tools/out/.
@@ -33,8 +34,19 @@ const SHOTS = {
   r_pedal: { stage: 'brakes', brake: 'r', t: 75, bview: 'link' },
   r_worn: { stage: 'brakes', brake: 'r', t: 75, lining: 1.8, bview: 'hub' },
   brakes_34: { stage: 'brakes', brake: 'r', t: 75, view: 'three' },
+  // close-ups for comparing details with the owner's photos: cam = [position, target, fov].
+  // photoCam freezes the camera, so these run last and only when asked for (--shots=d_tank or --details).
+  d_tank: { cam: [[0.75, 0.86, -0.62], [0.75, 0.78, -0.1], 30] },
+  d_tank_r: { cam: [[0.75, 0.86, 0.62], [0.75, 0.78, 0.1], 30] },
+  d_side: { cam: [[0.36, 0.6, -0.78], [0.36, 0.56, -0.15], 28] },
+  d_speedo: { cam: [[0.72, 1.24, 0], [1.02, 1.0, 0], 24] },
+  d_tail: { cam: [[-1.0, 0.76, 0.18], [-0.38, 0.66, 0], 22] },
+  d_shock: { cam: [[0.12, 0.5, 0.95], [0.09, 0.49, 0.18], 30] },
+  d_fhub: { cam: [[1.3, 0.34, -0.85], [1.3, 0.3, 0], 26] },
 };
-const wanted = arg('shots', Object.keys(SHOTS).join(',')).split(',').filter(Boolean);
+const detail = Object.keys(SHOTS).filter((k) => SHOTS[k].cam);
+const wanted = arg('shots', Object.keys(SHOTS).filter((k) => flag('details') || !SHOTS[k].cam).join(','))
+  .split(',').filter(Boolean).sort((a, b) => detail.includes(a) - detail.includes(b));
 
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml' };
 const server = http.createServer((req, res) => {
@@ -84,6 +96,7 @@ if (info) {
       if (s.view) v.view(s.view);
       v.explode(s.explode || 0);
       if (s.dims) v.dims();
+      if (s.cam) v.photoCam(s.cam[0], s.cam[1], [0, 1, 0], s.cam[2]);
     }, s);
     await page.waitForTimeout(1500);   // software rendering is slow; give the animations time to settle
     const file = path.join(OUT, `${name}${flag('dark') ? '_dark' : ''}${W !== 1400 ? `_${W}` : ''}.png`);

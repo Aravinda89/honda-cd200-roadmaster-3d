@@ -263,8 +263,8 @@ const PEDAL_PIVOT = V(0.47, 0.30, 0.135), PEDAL_ROD = V(-0.015, 0.06, 0), PEDAL_
 const TAIL_GLOW = BRAKE_MAT.glow(0xff3020);
 {
   const tail = byId.get('tail').group;
-  rbox(0.003, 0.114, 0.204, 0.002, TAIL_GLOW, tail, V(-0.392, 0.672, 0)).castShadow = false;
-  const b = mesh(new THREE.CylinderGeometry(0.038, 0.038, 0.004, 32), TAIL_GLOW, tail, false); b.rotation.z = Math.PI / 2; b.position.set(-0.406, 0.66, 0);
+  rbox(0.003, 0.104, 0.209, 0.002, TAIL_GLOW, tail, V(-0.3895, 0.672, 0)).castShadow = false;
+  const b = mesh(new THREE.CylinderGeometry(0.037, 0.037, 0.003, 32), TAIL_GLOW, tail, false); b.rotation.z = Math.PI / 2; b.position.set(-0.41, 0.655, 0);
 }
 
 /* pose the linkages for given lever / pedal travel (mm actually reached) */

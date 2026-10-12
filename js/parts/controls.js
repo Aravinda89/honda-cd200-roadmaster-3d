@@ -7,13 +7,13 @@ import { MAT, V, addPart, forkPt, mesh, qAlong, rbox, rod, sideGroup, tube } fro
    ===================================================================== */
 const BAR_R = [[0.945, 0.975, 0.0], [0.945, 0.975, 0.05], [0.94, 1.03, 0.085], [0.91, 1.09, 0.13], [0.86, 1.105, 0.2], [0.8, 1.078, 0.27], [0.76, 1.052, 0.32], [0.712, 1.026, 0.405]];
 {
-  const g = addPart('bars', 'controls', 'Handlebar', 'photo', 'High-rise chrome handlebar clamped to the top yoke, with rubber grips. In this model the top of the bars matches the published 1,105 mm overall height.', [0.04, 0.3, 0]);
+  const g = addPart('bars', 'controls', 'Handlebar', 'photo', 'High-rise chrome handlebar clamped to the top yoke, with rubber grips. Bare alloy switch housings beside the grips carry the lighting, horn and turn signal switches. In this model the top of the bars matches the published 1,105 mm overall height.', [0.04, 0.3, 0]);
   const half = BAR_R.slice(1);
   tube([...half.map((p) => [p[0], p[1], -p[2]]).reverse(), ...half], 0.0112, MAT.chrome(), g, 200, 12);
-  const rub = MAT.rubber(), blk = MAT.black();
+  const rub = MAT.rubber(), blk = MAT.black(), al = MAT.alloy();
   [-1, 1].forEach((s) => {
     rod([0.765, 1.055, 0.315 * s], [0.708, 1.024, 0.412 * s], 0.0165, rub, g, 18);
-    rbox(0.05, 0.042, 0.04, 0.01, blk, g, V(0.78, 1.064, 0.295 * s));
+    rbox(0.05, 0.042, 0.04, 0.01, al, g, V(0.78, 1.064, 0.295 * s));   // switch housing (photos set3-18, set3-19)
     rbox(0.03, 0.03, 0.05, 0.006, blk, g, V(0.945, 0.99, 0.045 * s));
   });
 }
