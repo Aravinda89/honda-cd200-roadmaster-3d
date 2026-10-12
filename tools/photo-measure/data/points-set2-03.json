@@ -1,0 +1,290 @@
+{
+ "note": "Pixel positions on the photo at HALF size (use --scale 2), plus the side plane z (metres) each point lies on.",
+ "points": {
+  "tank top front (z0)": [
+   430,
+   210,
+   0
+  ],
+  "tank top mid (z0)": [
+   550,
+   207,
+   0
+  ],
+  "tank top rear (z0)": [
+   650,
+   268,
+   0
+  ],
+  "tank front end": [
+   395,
+   270,
+   -0.05
+  ],
+  "tank rear end": [
+   668,
+   330,
+   -0.06
+  ],
+  "tank bottom front": [
+   405,
+   348,
+   -0.1
+  ],
+  "tank bottom rear": [
+   660,
+   352,
+   -0.08
+  ],
+  "knee pad front": [
+   510,
+   300,
+   -0.13
+  ],
+  "knee pad rear": [
+   655,
+   300,
+   -0.12
+  ],
+  "knee pad top": [
+   590,
+   255,
+   -0.13
+  ],
+  "knee pad bottom": [
+   590,
+   340,
+   -0.12
+  ],
+  "badge centre": [
+   455,
+   278,
+   -0.12
+  ],
+  "fuel cap": [
+   485,
+   200,
+   0
+  ],
+  "seat front top": [
+   690,
+   262,
+   0
+  ],
+  "seat top mid": [
+   790,
+   258,
+   0
+  ],
+  "seat rear top": [
+   870,
+   268,
+   0
+  ],
+  "seat rear end": [
+   885,
+   300,
+   -0.05
+  ],
+  "seat side bottom": [
+   780,
+   372,
+   -0.13
+  ],
+  "pillion front top": [
+   895,
+   228,
+   0
+  ],
+  "pillion rear top": [
+   1110,
+   232,
+   0
+  ],
+  "pillion bottom near": [
+   1000,
+   315,
+   -0.12
+  ],
+  "rack top rail rear": [
+   1250,
+   300,
+   -0.13
+  ],
+  "rack lower rail": [
+   1050,
+   340,
+   -0.13
+  ],
+  "sidecover chrome front": [
+   640,
+   425,
+   -0.155
+  ],
+  "sidecover top": [
+   770,
+   377,
+   -0.155
+  ],
+  "sidecover rear": [
+   855,
+   425,
+   -0.155
+  ],
+  "sidecover bottom": [
+   770,
+   478,
+   -0.155
+  ],
+  "chaincase top": [
+   850,
+   480,
+   -0.16
+  ],
+  "chaincase rear end": [
+   1045,
+   520,
+   -0.16
+  ],
+  "chaincase bottom front": [
+   760,
+   560,
+   -0.16
+  ],
+  "muffler front": [
+   640,
+   610,
+   -0.215
+  ],
+  "muffler top mid": [
+   900,
+   588,
+   -0.215
+  ],
+  "muffler bottom mid": [
+   900,
+   640,
+   -0.215
+  ],
+  "muffler rear end": [
+   1135,
+   618,
+   -0.215
+  ],
+  "rider peg": [
+   655,
+   615,
+   -0.22
+  ],
+  "pillion peg": [
+   855,
+   592,
+   -0.22
+  ],
+  "shock top": [
+   905,
+   372,
+   -0.18
+  ],
+  "shock bottom": [
+   955,
+   545,
+   -0.18
+  ],
+  "headlamp centre": [
+   255,
+   178,
+   0
+  ],
+  "headlamp shell rear": [
+   330,
+   180,
+   0
+  ],
+  "speedo top front": [
+   300,
+   92,
+   0
+  ],
+  "grip near end": [
+   520,
+   160,
+   -0.4
+  ],
+  "front indicator": [
+   245,
+   225,
+   -0.17
+  ],
+  "fork shroud bottom": [
+   245,
+   420,
+   -0.1
+  ],
+  "crash guard top": [
+   372,
+   425,
+   -0.2
+  ],
+  "crash guard bottom": [
+   380,
+   630,
+   -0.2
+  ],
+  "front guard tip": [
+   58,
+   392,
+   -0.06
+  ],
+  "front guard top": [
+   150,
+   355,
+   0
+  ],
+  "front guard rear low": [
+   330,
+   560,
+   -0.06
+  ],
+  "rear guard tail": [
+   1180,
+   545,
+   0
+  ],
+  "tail light": [
+   1200,
+   330,
+   0
+  ],
+  "rear indicator": [
+   1100,
+   395,
+   -0.15
+  ],
+  "rear plate": [
+   1180,
+   430,
+   0
+  ],
+  "cyl head top front": [
+   470,
+   365,
+   0
+  ],
+  "cyl head top rear": [
+   600,
+   365,
+   0
+  ],
+  "cyl barrel bottom front": [
+   480,
+   470,
+   0
+  ],
+  "generator cover": [
+   560,
+   540,
+   -0.15
+  ]
+ }
+}

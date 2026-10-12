@@ -1,0 +1,15 @@
+# Private reference material: the workshop manual (copyrighted) and the owner's photos
+reference/*
+!reference/README.md
+
+# Generated
+node_modules/
+tools/out/
+__pycache__/
+*.pyc
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

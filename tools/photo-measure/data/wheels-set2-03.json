@@ -1,0 +1,142 @@
+{
+ "size": [
+  2576,
+  1449
+ ],
+ "side": "left",
+ "out": "tools/photo-measure/data/cam-set2-03.json",
+ "points": [
+  [
+   [
+    1.28,
+    0.292,
+    0
+   ],
+   [
+    419,
+    1062
+   ],
+   1,
+   "front axle"
+  ],
+  [
+   [
+    0,
+    0.292,
+    0
+   ],
+   [
+    1914,
+    1065
+   ],
+   1,
+   "rear axle"
+  ],
+  [
+   [
+    1.28,
+    0.292,
+    -0.12
+   ],
+   [
+    378,
+    1137
+   ],
+   0.7,
+   "front nut"
+  ],
+  [
+   [
+    1.28,
+    0.0,
+    0
+   ],
+   [
+    410,
+    1378
+   ],
+   0.7,
+   "front contact"
+  ],
+  [
+   [
+    0,
+    0.0,
+    0
+   ],
+   [
+    1910,
+    1338
+   ],
+   0.7,
+   "rear contact"
+  ],
+  [
+   [
+    1.509,
+    0.292,
+    0
+   ],
+   [
+    148,
+    1058
+   ],
+   1,
+   "front rim front"
+  ],
+  [
+   [
+    -0.229,
+    0.292,
+    0
+   ],
+   [
+    2185,
+    1062
+   ],
+   1,
+   "rear rim back"
+  ],
+  [
+   [
+    1.28,
+    0.063,
+    0
+   ],
+   [
+    419,
+    1290
+   ],
+   1,
+   "front rim bottom"
+  ],
+  [
+   [
+    0,
+    0.063,
+    0
+   ],
+   [
+    1914,
+    1295
+   ],
+   1,
+   "rear rim bottom"
+  ],
+  [
+   [
+    0,
+    0.521,
+    0
+   ],
+   [
+    1914,
+    835
+   ],
+   0.8,
+   "rear rim top"
+  ]
+ ],
+ "photo": "reference/photos/set2-03.jpg",
+ "note": "Wheel landmarks: [bike point in metres, pixel in the full-size photo, weight, label]. Bike points assume 17-inch wheels: tyre radius 0.292 m, rim lip radius 0.229 m."
+}
