@@ -3,7 +3,7 @@
 An interactive, full-scale 3D model of my own Honda CD200 Roadmaster, built one system at a time
 so you can see how a classic motorcycle works.
 
-**Live:** https://YOUR-USERNAME.github.io/cd200-roadmaster-3d/
+**Live:** https://aravinda89.github.io/honda-cd200-roadmaster-3d/
 
 ## What you can do
 
