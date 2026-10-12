@@ -5,8 +5,8 @@ so that mechanics can learn how each part works. It runs as a static web page on
 (free hosting is a requirement) and is a portfolio pet project. Parts should match the real bike:
 the owner can supply photos, measurements and pages from the workshop manual.
 
-Stages 1 (outer body) and 2 (working drum brakes) are done. Stage 3 (engine internals) is next.
-See "Stage plan" below.
+Stages 1 (outer body), 2 (working drum brakes) and 3 (engine internals and the four-stroke cycle)
+are done. Stage 4 (clutch, gearbox, final drive) is next. See "Stage plan" below.
 
 ## Running it
 
@@ -38,12 +38,13 @@ js/core.js              units, key geometry, materials, mesh helpers, part regis
 js/parts/body.js        tank, seats, rack, side covers, chain case, mudguards, engine guard, plates
 js/parts/chassis.js     frame, fork, swingarm, rear shocks, stands, footrests
 js/parts/wheels.js      wheels and final drive
-js/parts/engine.js      engine exterior (stage 3 goes here or in a new module)
+js/parts/engine.js      engine exterior; exports the cylinder frame (cylWorld)
+js/parts/internals.js   stage 3: crankshaft, con rods, pistons, cam chain, camshaft, rockers, valves, plugs; poseEngine, cycleState
 js/parts/exhaust.js     headers and silencers
 js/parts/lights.js      headlamp, speedometer, indicators, tail light, horns
 js/parts/controls.js    handlebar, clutch lever, mirrors, gear/kick pedals, cables
 js/parts/brakes.js      stage 2: drums, back plates, shoes, springs, cams, lever, cable, pedal, rod, stop switch
-js/app.js               renderer, camera views, dimensions, explode, parts list, picking, brake mode, loop
+js/app.js               renderer, camera views, dimensions, explode, parts list, picking, brake and engine modes, loop
 tools/check.mjs         smoke test + screenshots
 tools/serve.mjs         local server
 tools/photo-measure/    measure part positions from side photos (see its README)
@@ -53,6 +54,7 @@ reference/              NOT in git: workshop manual PDF and the owner's photos (
 
 `js/app.js` imports every part module in build order. Order matters: `brakes.js` adds its stop-lamp
 glow to the tail light from `lights.js`, and `exhaust.js` uses the cylinder geometry from `engine.js`.
+`internals.js` builds in the same cylinder frame (from `CYL_BASE` / `CYL_TILT` in core.js).
 
 ## Conventions
 
@@ -82,14 +84,16 @@ around an axis), `rbox` (rounded box), `extrude`, `superLoft` + `loftGeometry` (
 the tank and seats, defined by side-profile functions), `surfPatch` (a patch laid on a loft surface:
 knee pads, badges), `fenderGeometry`, `hullOfCircles`, `arcPts`.
 
-**Modes.** `app.js` has a stage switch (`setStage('body' | 'brakes')`). In brake mode, parts outside
-`BRAKE_FOCUS` are faded with `setGhost` (opacity per part in `BRAKE_CONTEXT`), the brake panel drives
-`poseBrake` / `poseLinkages` every frame, and the camera's projection is shifted (`viewShift`) so the
-model stays clear of the panel. Follow the same pattern for new stages: a focus set, a panel, and
-pose functions exported from the stage's part module.
+**Modes.** `app.js` has a stage switch (`setStage('body' | 'brakes' | 'engine')`). In a tool stage,
+parts outside the stage's focus set are faded with `setGhost` (`BRAKE_FOCUS` / `BRAKE_CONTEXT`,
+`ENGINE_FOCUS` / `ENGINE_SHELL` / `ENGINE_CONTEXT`), the stage's panel drives the pose functions every
+frame (`poseBrake` / `poseLinkages`, `poseEngine`), and the camera's projection is shifted
+(`viewShift`) so the model stays clear of the panel. Systems listed in `STAGE_ONLY` (the engine
+internals) are hidden outside their stage, in the scene and in the parts list. Follow the same
+pattern for new stages: a focus set, a panel, and pose functions exported from the stage's part module.
 
 **Test hooks.** `window.viewer` (bottom of app.js) exposes `view`, `select`, `explode`, `dims`,
-`stage`, `brake`, `brakeView` and `photoCam`. `tools/check.mjs` and `tools/photo-measure/overlay.mjs`
+`stage`, `brake`, `brakeView`, `engine(deg, play, follow)`, `engineView`, `cycle` and `photoCam`. `tools/check.mjs` and `tools/photo-measure/overlay.mjs`
 depend on them; extend them for new stages rather than reaching into internals from tests.
 
 **Design.** Colours are CSS custom properties defined for light and dark at the top of
@@ -145,7 +149,18 @@ are fine and should be credited to the manual.
   heights off by 3–6 cm in opposite directions and invented details. A photogrammetry scan of the
   real bike (for example Polycam, about 120–150 photos) would be a valid reference if more accuracy
   is wanted.
-- Parts still marked `est`: swingarm, chain and sprockets, gear and kick-start pedals, control cables.
+- **Crank phasing is 360°** (both pistons rise and fall together, firing one turn apart). The manual's
+  valve clearance procedure (routine maintenance, PDF p.13–14) turns the engine one full turn to bring
+  the second cylinder to TDC on compression, and chapter 3 shows one coil and one contact breaker
+  firing both plugs together (wasted spark on the exhaust stroke).
+- **Valve timing** comes from the manual's CM200T column, because the CD200T column is blank:
+  inlet 7°30' BTDC / 27°30' ABDC, exhaust 27°30' BBDC / 7°30' ATDC. The engine panel says so.
+- **Engine internals are sized by estimate** apart from bore and stroke (rod length, valve sizes and
+  angles, valve lift, cam base circle). The cam lobes are generated from the same lift function that
+  moves the valves, and the rocker angle is solved exactly, so cam, rocker and valve stay in contact.
+  The valve clearance is drawn 30 times real size (`GAP_VIS` in internals.js).
+- Parts still marked `est`: swingarm, chain and sprockets, gear and kick-start pedals, control cables,
+  all engine internals.
 - Known visual mismatches against photo set2-03: the handlebar and mirrors sit a few cm higher in
   the model than in the photo; check with `tools/photo-measure/overlay.mjs` before changing.
 
@@ -155,14 +170,13 @@ are fine and should be credited to the manual.
 |---|---|---|---|
 | 1 | Outer body, click to identify, explode, dimensions | specs p.7 | done |
 | 2 | Drum brakes: operate, free play adjustment, lining wear check, fault finder | 10–11 (adjustment), 115–128 | done |
-| 3 | Engine internals: crankshaft, pistons (bore 53 mm, stroke 44 mm), camshaft and cam chain, valves; four-stroke cycle animation | chapter 1, 23–75 | next |
-| 4 | Clutch, 4-speed constant-mesh gearbox and final drive: pull the clutch, shift gears, follow the power to the rear wheel | chapter 1 (clutch/gearbox sections), 11 (chain) | |
+| 3 | Engine internals: crankshaft, pistons (bore 53 mm, stroke 44 mm), camshaft and cam chain, valves; four-stroke cycle animation; valve clearance check; engine fault finder | chapter 1, 23–75; routine maintenance 13–14 | done |
+| 4 | Clutch, 4-speed constant-mesh gearbox and final drive: pull the clutch, shift gears, follow the power to the rear wheel | chapter 1 (clutch/gearbox sections), 11 (chain) | next |
 | 5 | Electrical: battery to lights, horn, ignition; switch interaction | chapter 6, 129–144; wiring diagrams 142–144; ignition chapter 3, 90–96 | |
 | 6 | Portfolio polish: intro screen, README write-up, screenshots | — | |
 
-Fuel system and lubrication (chapter 2, pages 76–89) can join stage 3 or become its own stage.
-Check the crankshaft layout (crank throw phasing) in the manual before animating the pistons; do not
-assume it.
+Fuel system and lubrication (chapter 2, pages 76–89) were left out of stage 3 and can become their
+own stage.
 
 ## Open questions for the owner
 
@@ -171,4 +185,4 @@ assume it.
 - Square-on close-ups of the front hub (left side) and rear hub (right side): arm, cable / rod end,
   adjuster, torque arm, wear indicator. The close-up set3 has no straight hub shots.
 - Straight-on photos of the right side and the rear.
-- For stage 3: photos of both engine sides with the covers on.
+- Right side of the engine with the covers on (the close-up set has the left side only).

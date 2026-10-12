@@ -32,6 +32,24 @@ Use the CD200T column wherever the manual gives figures per model.
 - Fork: oil-damped telescopic, travel 115 mm, 135–140 cc ATF per leg, stanchion OD 30.915–30.950 mm.
 - Rear suspension: travel 64 mm, spring free length 182.6 mm (limit 180.0 mm).
 - Engine: 194 cc air-cooled OHC parallel twin, bore 53 mm, stroke 44 mm, 4-speed constant mesh.
+- Engine internals (specs p.24–25, CD200 column): bore 53.00–53.01 mm (limit 53.10), compression
+  8.8:1; piston skirt 52.96–52.99 mm (limit 52.87); ring end gap 0.15–0.35 mm (limit 0.5); ring-to-
+  groove 0.015–0.045 mm (limit 0.12); gudgeon pin 13.994–14.000 mm (limit 13.98); valve stem IN
+  5.450–5.465 / EX 5.430–5.445 mm (limits 5.42 / 5.40); seat width 1.0 mm (limit 1.5), seat angle 45°;
+  valve springs outer 36.45 mm (limit 35.5), inner 29.90 mm (limit 29.0); valve clearance cold
+  0.05 mm IN and EX; cam lobe height IN 27.695 / EX 27.522 mm (limits 26.6 / 26.5); camshaft journal
+  19.967–19.980 mm (limit 19.92), runout 0.05 mm; rocker bore 10.000–10.015 mm (limit 10.1);
+  crankshaft runout 0.1 mm; small end 14.016–14.034 mm (limit 14.08); big-end axial 0.10–0.40 mm
+  (limit 0.60), radial 0.004–0.012 mm (limit 0.05).
+- Valve timing: the CD185T/CD200T column is blank (p.24–25). The model uses the CM200T column:
+  inlet opens 7°30' BTDC, closes 27°30' ABDC; exhaust opens 27°30' BBDC, closes 7°30' ATDC.
+- Valve clearance procedure (routine maintenance, p.13–14): T mark on the ATU to the fixed index mark,
+  rockers free = TDC on compression, 0.05 mm feeler gauge, square-headed adjuster and locknut, one
+  full turn (360°) for the other cylinder; camshaft slot at 3 o'clock; head cover bolts 0.8–1.2 kgf m.
+- Ignition (chapter 3, p.90–94): one coil, one contact breaker, single F mark; 15° BTDC at 1,200 rpm,
+  full advance 32–35° BTDC at 2,800 rpm (200 models); plugs CR7HS / U22FSR-L (UK), C7HS / U22FS (US),
+  gap 0.6–0.7 mm.
+- Engine fault diagnosis: PDF p.73–74 (printed 72–73).
 - Torques: swinging arm pivot bolt 4.0–5.0 kgf m; wheel spindle nuts 4.0–5.0 kgf m.
 - Electrical: the maintenance section describes a 6 V 12 Ah lead-acid battery. Check this against the
   owner's bike and the wiring diagram before stage 5; some CD200 variants are 12 V.
