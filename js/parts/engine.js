@@ -1,4 +1,4 @@
-// Engine exterior. Stage 3 will add the internals here or in a new module.
+// Engine exterior. The internals (stage 3) are in internals.js and share this cylinder frame.
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { CYL_BASE, CYL_TILT, MAT, V, addPart, extrude, lathe, mesh, rbox, rod, tube } from '../core.js';

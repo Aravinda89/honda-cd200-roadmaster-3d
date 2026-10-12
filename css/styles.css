@@ -189,6 +189,18 @@ input[type="range"] { width: 100%; min-width: 0; accent-color: var(--accent); }
 .fault ul { margin: 0; padding-left: 16px; display: grid; gap: 3px; font-size: 13px; }
 .fault li::marker { color: var(--muted); }
 .fault b { font-weight: 600; }
+
+/* ---------- stage 3: engine ---------- */
+.ep-play { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; }
+.ep-step, .ep-tdc { border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 10px; padding: 0 12px; font: 600 12.5px/1 var(--font-display); letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+.ep-step:hover, .ep-tdc:hover { border-color: var(--muted); }
+.ep-tdc { padding: 10px 12px; justify-self: start; }
+.hold[aria-pressed="false"] { background: var(--ink); color: var(--panel); }
+.ep-other { margin: -4px 0 0; font-size: 12.5px; color: var(--muted); }
+.ep-figs { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+.ep-figs dt, .ep-figs dd { margin: 0; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.ep-figs dt { color: var(--muted); font-size: 12.5px; }
+.ep-figs dd { font: 500 11.5px/1.45 var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; padding-left: 10px; }
 .stages button { border: 0; background: none; padding: 0; font: inherit; color: inherit; text-align: left; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
 .stages button:hover { text-decoration-color: var(--accent); }
 .stages .tag.soon { color: var(--muted); }
@@ -205,8 +217,9 @@ input[type="range"] { width: 100%; min-width: 0; accent-color: var(--accent); }
   .bottombar { left: 12px; right: 12px; bottom: 12px; max-width: none; }
   #info { left: 12px; right: 12px; width: auto; bottom: 92px; max-height: 46%; }
   .bpanel { left: 12px; right: 12px; bottom: 12px; width: auto; max-height: 56%; padding: 10px 12px 12px; }
-  .brakes-mode #info { top: 104px; bottom: auto; max-height: 34%; }
-  .bp-slider { grid-template-columns: 84px minmax(0, 1fr) 64px; }
+  .panel-mode #info { top: 104px; bottom: auto; max-height: 34%; }
+  .ep-step { padding: 0 9px; }
+  .bp-slider { grid-template-columns: 84px minmax(0, 1fr) 76px; }
 }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }

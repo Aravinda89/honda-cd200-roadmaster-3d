@@ -22,7 +22,7 @@
     <header>
       <p class="eyebrow" id="eyebrow">Stage 1 · Outer body</p>
       <h1>CD200 Roadmaster</h1>
-      <p class="lede">A 1:1 scale model of the bike, built from the workshop manual and measurements taken from the owner's photos. Click any part on the bike, or in this list, to identify it. Switch to Brakes to see the drum brakes work.</p>
+      <p class="lede">A 1:1 scale model of the bike, built from the workshop manual and measurements taken from the owner's photos. Click any part on the bike, or in this list, to identify it. Switch to Brakes to see the drum brakes work, or to Engine to watch the four-stroke cycle inside the engine.</p>
     </header>
 
     <section class="specs" aria-labelledby="specsTitle">
@@ -42,6 +42,7 @@
         <dt>Fork / rear travel</dt><dd>115 / 64 mm</dd>
         <dt>Engine</dt><dd>194 cc twin</dd>
         <dt>Bore × stroke</dt><dd>53 × 44 mm</dd>
+        <dt>Compression ratio</dt><dd>8.8 : 1</dd>
       </dl>
       <p class="src">Source: Haynes Owners Workshop Manual no. 572, CD/CM 185 &amp; 200 (CD200T column). The manual gives 28 psi rear in its maintenance section and 32 psi in its tyre specifications. The seat on the owner's bike measures about 770 mm in photos, so the model follows the photos there.</p>
     </section>
@@ -55,6 +56,18 @@
         <div class="fault"><h3>Brake slow or spongy to release</h3><ul><li><b>Cam binding in its housing:</b> free it and grease it.</li><li><b>Weak shoe springs:</b> renew them.</li></ul></div>
       </div>
       <p class="src">Source: Haynes manual no. 572, chapter 5, fault diagnosis.</p>
+    </section>
+
+    <section id="engineFaults" hidden aria-labelledby="engineFaultsTitle">
+      <h2 class="block-title" id="engineFaultsTitle">Engine fault finder</h2>
+      <div class="faults">
+        <div class="fault"><h3>Hard to start or will not start</h3><ul><li><b>Low compression:</b> a valve held open (clearance too small), worn valve guides, wrong valve timing, worn rings or bore.</li><li><b>No spark:</b> wet or fouled plugs, dirty contact breaker points, wrong points gap or ignition timing.</li><li><b>No fuel:</b> blocked tank cap vent, fuel tap or pipe, or a faulty float valve.</li></ul></div>
+        <div class="fault"><h3>Noisy engine</h3><ul><li><b>Tappet noise:</b> too much valve clearance, or a weak or broken valve spring.</li><li><b>Knocking from a piston:</b> worn piston and bore, carbon in the combustion chambers, worn gudgeon pin or small end.</li><li><b>Cam chain rattle:</b> stretched chain or worn sprockets.</li></ul></div>
+        <div class="fault"><h3>Smoking exhaust</h3><ul><li><b>Too much oil</b> in the engine: check the level.</li><li><b>Worn bores and rings</b> or <b>worn valve guides</b>.</li></ul></div>
+        <div class="fault"><h3>Lack of power</h3><ul><li><b>Valves:</b> wrong clearance, valve sticking, weak springs, poor seating or wrong valve timing.</li><li><b>Worn bores and rings.</b></li><li><b>Ignition:</b> wrong timing, faulty plug caps or dirty points.</li></ul></div>
+        <div class="fault"><h3>Overheating</h3><ul><li><b>Carbon build-up</b> in the cylinder head: decoke.</li><li><b>Low oil</b>, a faulty oil pump or a blocked oil way.</li><li><b>Ignition timing too far advanced.</b></li></ul></div>
+      </div>
+      <p class="src">Source: Haynes manual no. 572, chapter 1, fault diagnosis: engine.</p>
     </section>
 
     <section aria-labelledby="partsTitle">
@@ -76,8 +89,9 @@
       <h2 class="block-title" id="stagesTitle">Build stages</h2>
       <ol class="stages">
         <li><button type="button" data-stage="body" aria-pressed="true">Outer body</button> <span class="tag">Done</span></li>
-        <li class="now"><button type="button" data-stage="brakes" aria-pressed="false">Brakes</button> <span class="tag">New</span></li>
-        <li>Engine internals <span class="tag soon">Next</span></li>
+        <li><button type="button" data-stage="brakes" aria-pressed="false">Brakes</button> <span class="tag">Done</span></li>
+        <li class="now"><button type="button" data-stage="engine" aria-pressed="false">Engine internals</button> <span class="tag">New</span></li>
+        <li>Clutch and gearbox <span class="tag soon">Next</span></li>
         <li>Electrical <span class="tag soon">Later</span></li>
       </ol>
     </section>
@@ -91,6 +105,7 @@
       <div class="seg stage-seg" role="group" aria-label="Build stage">
         <button type="button" id="st-body" data-stage="body" aria-pressed="true">Body</button>
         <button type="button" id="st-brakes" data-stage="brakes" aria-pressed="false">Brakes</button>
+        <button type="button" id="st-engine" data-stage="engine" aria-pressed="false">Engine</button>
       </div>
       <div class="seg" role="group" aria-label="Camera view">
         <button type="button" id="v-three" data-view="three" aria-pressed="true">3/4</button>
@@ -164,6 +179,65 @@
           </div>
         </details>
         <p class="bp-note">Shoe clearances are drawn larger than real so you can see the shoes move. Figures from the Haynes workshop manual.</p>
+      </div>
+    </section>
+
+    <section id="enginePanel" class="bpanel" hidden aria-label="Engine controls">
+      <div class="bp-head">
+        <div class="bp-tabs" role="tablist" aria-label="Cylinder to follow">
+          <button type="button" role="tab" id="ec-L" data-cyl="0" aria-selected="true">Left cyl.</button>
+          <button type="button" role="tab" id="ec-R" data-cyl="1" aria-selected="false">Right cyl.</button>
+        </div>
+        <button type="button" class="bp-collapse" id="epCollapse" aria-expanded="true" aria-controls="epBody">Hide</button>
+      </div>
+      <div id="epBody">
+        <div class="ep-play">
+          <button type="button" class="hold" id="epPlay" aria-pressed="true">Pause</button>
+          <button type="button" class="ep-step" id="epBack" aria-label="Back one stroke">◀ Stroke</button>
+          <button type="button" class="ep-step" id="epFwd" aria-label="Forward one stroke">Stroke ▶</button>
+        </div>
+        <div class="bp-slider">
+          <label for="epCrank">Crank angle</label>
+          <input type="range" id="epCrank" min="0" max="719" step="1" value="0">
+          <output id="epCrankOut" for="epCrank">0°</output>
+        </div>
+        <div class="bp-slider">
+          <label for="epSpeed">Speed</label>
+          <input type="range" id="epSpeed" min="15" max="240" step="5" value="60">
+          <output id="epSpeedOut" for="epSpeed">Slow</output>
+        </div>
+        <dl class="bp-read">
+          <div><dt>Stroke</dt><dd><span class="chip" id="chStroke">Intake</span><small id="rdStroke"></small></dd></div>
+          <div><dt>Spark</dt><dd><span class="chip" id="chSpark">Off</span><small id="rdSpark"></small></dd></div>
+          <div><dt>Inlet valve</dt><dd><span class="chip" id="chIn">Closed</span><small id="rdIn"></small></dd></div>
+          <div><dt>Exhaust valve</dt><dd><span class="chip" id="chEx">Closed</span><small id="rdEx"></small></dd></div>
+        </dl>
+        <p class="ep-other" id="epOther"></p>
+        <div class="bp-row">
+          <button type="button" data-eview="cyl">Cylinder view</button>
+          <button type="button" data-eview="head">Head view</button>
+          <button type="button" data-eview="crank">Crank view</button>
+          <button type="button" id="epInside" aria-pressed="true">See inside</button>
+        </div>
+        <ol class="bp-steps" id="epSteps"></ol>
+        <details class="bp-checks">
+          <summary>Workshop checks</summary>
+          <div class="inner">
+            <button type="button" class="ep-tdc" id="epTdc">Set to TDC on compression</button>
+            <p class="bp-hint" id="epTdcHint"></p>
+            <dl class="ep-figs">
+              <dt>Valve clearance, cold</dt><dd>0.05 mm in and ex</dd>
+              <dt>Compression ratio</dt><dd>8.8 : 1</dd>
+              <dt>Bore (limit)</dt><dd>53.00–53.01 (53.10) mm</dd>
+              <dt>Valve spring outer (limit)</dt><dd>36.45 (35.5) mm</dd>
+              <dt>Valve spring inner (limit)</dt><dd>29.90 (29.0) mm</dd>
+              <dt>Cam lobe in / ex (limit)</dt><dd>27.695 / 27.522 (26.6 / 26.5) mm</dd>
+              <dt>Ignition timing</dt><dd>15° BTDC idle; 32–35° BTDC at 2,800 rpm</dd>
+              <dt>Head cover bolts</dt><dd>0.8–1.2 kgf m</dd>
+            </dl>
+          </div>
+        </details>
+        <p class="bp-note" id="epNote"></p>
       </div>
     </section>
 

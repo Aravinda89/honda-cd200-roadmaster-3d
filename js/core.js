@@ -293,6 +293,7 @@ const SYSTEMS = [
   { id: 'wheels', name: 'Wheels & drive' },
   { id: 'brakes', name: 'Brakes' },
   { id: 'engine', name: 'Engine (outside)' },
+  { id: 'internals', name: 'Engine internals' },
   { id: 'exhaust', name: 'Exhaust' },
   { id: 'lights', name: 'Lights & instruments' },
   { id: 'controls', name: 'Controls' },

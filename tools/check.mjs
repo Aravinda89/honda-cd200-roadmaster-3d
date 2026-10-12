@@ -34,6 +34,12 @@ const SHOTS = {
   r_pedal: { stage: 'brakes', brake: 'r', t: 75, bview: 'link' },
   r_worn: { stage: 'brakes', brake: 'r', t: 75, lining: 1.8, bview: 'hub' },
   brakes_34: { stage: 'brakes', brake: 'r', t: 75, view: 'three' },
+  // engine: deg is the crank angle, 0 = left cylinder TDC on compression
+  e_intake: { stage: 'engine', engine: { deg: 450 }, eview: 'cyl' },
+  e_power: { stage: 'engine', engine: { deg: 20 }, eview: 'cyl' },
+  e_head: { stage: 'engine', engine: { deg: 460 }, eview: 'head' },
+  e_crank: { stage: 'engine', engine: { deg: 100 }, eview: 'crank' },
+  e_tdc: { stage: 'engine', engine: { deg: 0 }, eview: 'head' },
   // close-ups for comparing details with the owner's photos: cam = [position, target, fov].
   // photoCam freezes the camera, so these run last and only when asked for (--shots=d_tank or --details).
   d_tank: { cam: [[0.75, 0.86, -0.62], [0.75, 0.78, -0.1], 30] },
@@ -43,6 +49,7 @@ const SHOTS = {
   d_tail: { cam: [[-1.0, 0.76, 0.18], [-0.38, 0.66, 0], 22] },
   d_shock: { cam: [[0.12, 0.5, 0.95], [0.09, 0.49, 0.18], 30] },
   d_fhub: { cam: [[1.3, 0.34, -0.85], [1.3, 0.3, 0], 26] },
+  d_gap: { stage: 'engine', engine: { deg: 0 }, cam: [[0.652, 0.606, -0.26], [0.652, 0.606, -0.061], 9] },   // left inlet rocker at TDC compression
 };
 const detail = Object.keys(SHOTS).filter((k) => SHOTS[k].cam);
 const wanted = arg('shots', Object.keys(SHOTS).filter((k) => flag('details') || !SHOTS[k].cam).join(','))
@@ -93,6 +100,8 @@ if (info) {
       v.stage(s.stage || 'body');
       if (s.brake) v.brake(s.brake, s.t ?? 0, s.lining, s.slack);
       if (s.bview) v.brakeView(s.brake, s.bview);
+      if (s.engine) v.engine(s.engine.deg, false, s.engine.follow);
+      if (s.eview) v.engineView(s.eview);
       if (s.view) v.view(s.view);
       v.explode(s.explode || 0);
       if (s.dims) v.dims();

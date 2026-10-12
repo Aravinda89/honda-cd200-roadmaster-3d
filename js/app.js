@@ -1,4 +1,4 @@
-// Viewer: renderer, camera, dimensions overlay, explode, parts list, picking, brake mode and the render loop.
+// Viewer: renderer, camera, dimensions overlay, explode, parts list, picking, brake and engine modes and the render loop.
 // Entry point. Part modules are imported in build order; the order matters for parts that reference others.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -8,7 +8,8 @@ import { $, BASIS, FA, PARTS, RA, SYSTEMS, V, WB, bike, byId } from './core.js';
 import { SEAT_TOP } from './parts/body.js';
 import './parts/chassis.js';
 import './parts/wheels.js';
-import './parts/engine.js';
+import { cylWorld } from './parts/engine.js';
+import { GAP_VIS, SPARK_BTDC, VALVE_EVENTS, cycleState, poseEngine } from './parts/internals.js';
 import './parts/exhaust.js';
 import './parts/lights.js';
 import './parts/controls.js';
@@ -172,10 +173,14 @@ explodeInput.addEventListener('input', () => { explodeTarget = explodeInput.valu
    Parts list, selection, visibility
    ===================================================================== */
 const eyeSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g class="open"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></g><g class="shut"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7a10 10 0 0 0 5.4-1.6"/></g></svg>';
+let stage = 'body';
+const STAGE_ONLY = { internals: 'engine' };   // systems that exist only in one stage (they sit inside other parts)
+const inStage = (p) => !STAGE_ONLY[p.sys] || STAGE_ONLY[p.sys] === stage;
+function showSystems() { SYSTEMS.forEach((s) => { $(`#sys-${s.id}`).hidden = !!STAGE_ONLY[s.id] && STAGE_ONLY[s.id] !== stage; }); }
 const systemsEl = $('#systems');
 SYSTEMS.forEach((sys) => {
   const list = PARTS.filter((p) => p.sys === sys.id);
-  const sec = document.createElement('section'); sec.className = 'sys';
+  const sec = document.createElement('section'); sec.className = 'sys'; sec.id = `sys-${sys.id}`;
   sec.innerHTML = `<div class="sys-head">
       <button type="button" class="sys-toggle" id="sx-${sys.id}" aria-expanded="true" aria-controls="sl-${sys.id}"><span class="caret"></span><span class="sys-name">${sys.name}</span><span class="count">${list.length}</span></button>
       <label class="switch" title="Show or hide ${sys.name}"><input type="checkbox" id="sv-${sys.id}" checked><span class="track"></span><span class="sr">Show ${sys.name}</span></label>
@@ -212,7 +217,7 @@ function refreshHighlights() {
   if (hovered && hovered !== selected) setEmissive(hovered, signal(), 0.14);
   if (selected) setEmissive(selected, signal(), 0.34);
 }
-function setVisible(id, v) { const p = byId.get(id); p.visible = v; p.group.visible = v && !(HIDE_ON_EXPLODE.includes(id) && explodeNow >= 0.04); if (!v && selected === p) select(null); }
+function setVisible(id, v) { const p = byId.get(id); p.visible = v; p.group.visible = v && inStage(p) && !(HIDE_ON_EXPLODE.includes(id) && explodeNow >= 0.04); if (!v && selected === p) select(null); }
 function syncUI() {
   PARTS.forEach((p) => {
     const eye = $(`#pe-${p.id}`), pb = $(`#pb-${p.id}`);
@@ -266,7 +271,7 @@ function pick(x, y) {
   for (const h of raycaster.intersectObject(bike, true)) {
     if (!shownChain(h.object)) continue;
     const p = partOf(h.object); if (!p) continue;
-    if (p.ghost != null) { if (BRAKE_FOCUS.has(p.id) && !fallback) fallback = p; continue; }
+    if (p.ghost != null) { if (stageFocus().has(p.id) && !fallback) fallback = p; continue; }
     return p;
   }
   return fallback;
@@ -340,8 +345,13 @@ const BRAKE_UI = {
 };
 const BRAKE_FOCUS = new Set(PARTS.filter((p) => p.sys === 'brakes').map((p) => p.id).concat(['tail']));
 const BRAKE_CONTEXT = { fwheel: 0.12, rwheel: 0.12, bars: 0.45, pegs: 0.3 };   // parts kept faintly visible for reference
+const ENGINE_FOCUS = new Set(PARTS.filter((p) => p.sys === 'internals').map((p) => p.id));
+const ENGINE_SHELL = ['cylinders', 'crankcase'];                  // see-through when "See inside" is on, solid when off
+const ENGINE_CONTEXT = { headers: 0.12, frame: 0.06, fwheel: 0.05, rwheel: 0.05 };
+const NO_FOCUS = new Set();
+const stageFocus = () => (stage === 'brakes' ? BRAKE_FOCUS : stage === 'engine' ? ENGINE_FOCUS : NO_FOCUS);
 const bstate = { f: { t: 0, target: 0 }, r: { t: 0, target: 0 } };
-let stage = 'body', brakeKey = 'f', seeInside = true, holding = false;
+let brakeKey = 'f', seeInside = true, holding = false;
 const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function setGhost(p, op) {
@@ -366,6 +376,8 @@ function applyGhosts() {
     if (stage === 'brakes') {
       if (!BRAKE_FOCUS.has(p.id)) op = BRAKE_CONTEXT[p.id] ?? 0.07;
       else if (seeInside && (p.id === 'fplate' || p.id === 'rplate')) op = 0.16;
+    } else if (stage === 'engine' && !ENGINE_FOCUS.has(p.id)) {
+      op = ENGINE_SHELL.includes(p.id) ? (eng.inside ? 0.13 : null) : ENGINE_CONTEXT[p.id] ?? 0.04;
     }
     setGhost(p, op);
   });
@@ -447,32 +459,39 @@ function setBrake(key, fly = true) {
   if (fly) { setViewButtons(''); flyTo(brakePose(key, 'hub')); }
 }
 function updateViewShift() {
-  const panelShown = stage === 'brakes' && !panelEl.hidden;
+  const el = stage === 'brakes' ? panelEl : stage === 'engine' ? enginePanelEl : null;
   let x = 0, y = 0;
-  if (panelShown) {
-    const r = panelEl.getBoundingClientRect(), v = viewport.getBoundingClientRect();
+  if (el && !el.hidden) {
+    const r = el.getBoundingClientRect(), v = viewport.getBoundingClientRect();
     if (v.width > 760) x = Math.round((r.right - v.left) / 2);
     else y = -Math.round((v.bottom - r.top) / 2);
   }
   if (x !== viewShift.x || y !== viewShift.y) { viewShift = { x, y }; resize(); }
 }
-new ResizeObserver(() => updateViewShift()).observe(panelEl);
+const enginePanelEl = $('#enginePanel');
+[panelEl, enginePanelEl].forEach((el) => new ResizeObserver(() => updateViewShift()).observe(el));
+const EYEBROW = { body: 'Stage 1 · Outer body', brakes: 'Stage 2 · Brakes', engine: 'Stage 3 · Engine' };
 function setStage(next) {
   if (stage === next) return;
   stage = next;
-  const brakes = stage === 'brakes';
+  const body = stage === 'body';
   document.querySelectorAll('[data-stage]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.stage === stage)));
-  $('#stage').classList.toggle('brakes-mode', brakes);
-  $('#eyebrow').textContent = brakes ? 'Stage 2 · Brakes' : 'Stage 1 · Outer body';
-  panelEl.hidden = !brakes; $('.bottombar').hidden = brakes; $('#faults').hidden = !brakes;
-  tDims.hidden = brakes; if (brakes) setDims(false);
+  $('#stage').classList.toggle('panel-mode', !body);
+  $('#eyebrow').textContent = EYEBROW[stage];
+  panelEl.hidden = stage !== 'brakes'; enginePanelEl.hidden = stage !== 'engine';
+  $('#faults').hidden = stage !== 'brakes'; $('#engineFaults').hidden = stage !== 'engine';
+  $('.bottombar').hidden = !body;
+  tDims.hidden = !body; if (!body) setDims(false);
   explodeTarget = explodeNow = 0; explodeInput.value = 0; explodeOut.textContent = '0%'; applyExplode(0);
-  isolated = null; PARTS.forEach((p) => setVisible(p.id, true));
+  isolated = null; PARTS.forEach((p) => setVisible(p.id, true)); showSystems();
   ['f', 'r'].forEach((k) => { bstate[k].t = bstate[k].target = 0; });
   holding = false;
+  if (stage === 'engine') { eng.target = null; setPlaying(!reduceMotion()); }
   applyGhosts(); select(null);
   updateViewShift();
-  if (brakes) setBrake(brakeKey, true); else goView('three');
+  if (stage === 'brakes') setBrake(brakeKey, true);
+  else if (stage === 'engine') { setFollow(eng.follow); setViewButtons(''); flyTo(enginePose('cyl')); }
+  else goView('three');
   syncUI();
 }
 document.querySelectorAll('[data-stage]').forEach((b) => b.addEventListener('click', () => { setStage(b.dataset.stage); closePanelOnMobile(); }));
@@ -521,12 +540,116 @@ function updateBrakes(dt) {
 }
 
 /* =====================================================================
+   Stage 3: engine mode (four-stroke cycle, valve clearance check)
+   ===================================================================== */
+const eng = { deg: 380, target: null, playing: false, dps: 60, follow: 0, inside: true };
+const CYL_NAME = ['Left', 'Right'];
+const STROKE_UI = {
+  Intake: { step: 0, chip: 'ok', text: 'piston going down' },
+  Compression: { step: 1, chip: 'warn', text: 'piston going up' },
+  Power: { step: 2, chip: 'on', text: 'piston driven down' },
+  Exhaust: { step: 3, chip: 'idle', text: 'piston going up' },
+};
+const wrapDeg = (a, m) => ((a % m) + m) % m;
+// a cycle angle (0 = TDC at the start of the power stroke) as the manual writes valve timing
+function fmtEvent(phi) {
+  const r = wrapDeg(phi, 360), f = (d) => `${+d.toFixed(1)}°`;
+  if (r >= 270) return `${f(360 - r)} BTDC`;
+  if (r < 90) return `${f(r)} ATDC`;
+  return r < 180 ? `${f(180 - r)} BBDC` : `${f(r - 180)} ABDC`;
+}
+const ENGINE_STEPS = [
+  'Intake: the piston goes down with the inlet valve open and draws fresh mixture in from the carburettor.',
+  'Compression: both valves are shut. The rising piston squeezes the mixture into the combustion chamber (compression ratio 8.8 : 1).',
+  `Power: the plug fires ${SPARK_BTDC}° before TDC at idle. The burning gas drives the piston down and turns the crankshaft.`,
+  'Exhaust: the exhaust valve opens before the bottom of the stroke and the rising piston pushes the burnt gas out.',
+];
+const epPlay = $('#epPlay'), epCrank = $('#epCrank'), epSpeed = $('#epSpeed');
+$('#epSteps').innerHTML = ENGINE_STEPS.map((t) => `<li>${t}</li>`).join('');
+$('#epNote').textContent = `Valve timing from the manual's CM200T column, because the CD200T column is blank: inlet opens ${fmtEvent(VALVE_EVENTS.inOpen)}, closes ${fmtEvent(VALVE_EVENTS.inClose)}; exhaust opens ${fmtEvent(VALVE_EVENTS.exOpen)}, closes ${fmtEvent(VALVE_EVENTS.exClose)}. The valve clearance is drawn ${Math.round(GAP_VIS / 0.00005)} times larger than real. Apart from bore and stroke, the internal parts are sized by estimate. Slow motion: the real engine idles at 1,200 rpm.`;
+
+function setPlaying(on) { eng.playing = on; epPlay.setAttribute('aria-pressed', String(on)); epPlay.textContent = on ? 'Pause' : 'Play'; }
+function setFollow(i) {
+  eng.follow = i;
+  document.querySelectorAll('[data-cyl]').forEach((b) => b.setAttribute('aria-selected', String(+b.dataset.cyl === i)));
+  const name = CYL_NAME[i].toLowerCase();
+  $('#epTdc').textContent = `Set ${name} cylinder to TDC on compression`;
+  $('#epTdcHint').textContent = `Engine cold. Take off the head cover, both plugs and the left inspection cover. Turn the engine anticlockwise (seen from the left) with a spanner on the turning hexagon until the T mark on the ATU lines up with the fixed index mark. If both rockers of a cylinder have free play, that cylinder is at TDC on compression; if not, turn one more full turn. Check each valve with a 0.05 mm feeler gauge between the stem and the adjuster, set it with the square-headed adjuster and tighten the locknut. One more full turn (360°) brings the other cylinder to TDC on compression. The milled slot in the left end of the camshaft is at 3 o'clock for one cylinder${i === 0 ? ' (the left one in this model; the manual does not say which)' : ''}.`;
+  updateEngineReadouts();
+}
+function updateEngineReadouts() {
+  const st = cycleState(eng.deg), c = st[eng.follow], o = st[1 - eng.follow], su = STROKE_UI[c.stroke];
+  $('#epCrankOut').textContent = `${Math.round(wrapDeg(eng.deg, 720))}°`;
+  const dead = c.into < 1 ? (c.stroke === 'Power' || c.stroke === 'Intake' ? 'at TDC' : 'at BDC') : null;
+  chip($('#chStroke'), su.chip, c.stroke); $('#rdStroke').textContent = dead ?? `${su.text}, ${Math.round(c.into)}° of 180°`;
+  if (c.spark > 0 && c.usefulSpark) { chip($('#chSpark'), 'on', 'Firing'); $('#rdSpark').textContent = 'ignites the mixture'; }
+  else if (c.spark > 0) { chip($('#chSpark'), 'warn', 'Wasted spark'); $('#rdSpark').textContent = 'end of exhaust: does nothing'; }
+  else { chip($('#chSpark'), 'idle', 'Off'); $('#rdSpark').textContent = `fires ${SPARK_BTDC}° BTDC`; }
+  [['In', c.inLift, VALVE_EVENTS.inOpen, VALVE_EVENTS.inClose], ['Ex', c.exLift, VALVE_EVENTS.exOpen, VALVE_EVENTS.exClose]].forEach(([k, lift, open, close]) => {
+    chip($(`#ch${k}`), lift > 0 ? 'ok' : 'idle', lift > 0 ? 'Open' : 'Closed');
+    $(`#rd${k}`).textContent = lift > 0 ? `closes ${fmtEvent(close)}` : `opens ${fmtEvent(open)}`;
+  });
+  $('#epOther').textContent = `${o.name} cylinder: ${o.stroke.toLowerCase()} stroke. Both pistons rise and fall together; the cylinders fire one turn apart.`;
+  document.querySelectorAll('#epSteps li').forEach((li, i) => { li.className = i === su.step ? 'active' : ''; });
+}
+function enginePose(which) {
+  const m = Math.max(1, (which === 'crank' ? 1.05 : 0.9) / effAspect());
+  let target, off;
+  if (which === 'head') { target = cylWorld(0, 0.15, -0.01); off = V(-0.22, 0.34, -0.3); }
+  else if (which === 'crank') { target = cylWorld(0, 0.04, 0); off = V(0.52, 0.12, -0.36); }
+  else { target = cylWorld(0, 0.06, -0.03); off = V(0.12, 0.08, -0.62); }
+  return { pos: target.clone().addScaledVector(off, m), target };
+}
+function strokeStep(sign) {
+  const phi = wrapDeg(eng.deg + (eng.follow ? 360 : 0), 720), into = phi % 180;
+  const base = eng.target ?? eng.deg;
+  setPlaying(false);
+  eng.target = base + (sign > 0 ? 180 - into : -(into < 0.5 ? 180 : into));
+}
+epPlay.addEventListener('click', () => { eng.target = null; setPlaying(!eng.playing); });
+$('#epFwd').addEventListener('click', () => strokeStep(1));
+$('#epBack').addEventListener('click', () => strokeStep(-1));
+epCrank.addEventListener('input', () => { setPlaying(false); eng.target = null; eng.deg = +epCrank.value; });
+function setSpeed(v) { eng.dps = v; epSpeed.value = v; $('#epSpeedOut').textContent = `${(360 / v).toFixed(1)} s/turn`; }
+epSpeed.addEventListener('input', () => setSpeed(+epSpeed.value));
+setSpeed(eng.dps);
+document.querySelectorAll('[data-cyl]').forEach((b) => b.addEventListener('click', () => setFollow(+b.dataset.cyl)));
+document.querySelectorAll('[data-eview]').forEach((b) => b.addEventListener('click', () => { setViewButtons(''); flyTo(enginePose(b.dataset.eview)); }));
+$('#epInside').addEventListener('click', (e) => { eng.inside = !eng.inside; e.currentTarget.setAttribute('aria-pressed', String(eng.inside)); applyGhosts(); });
+$('#epTdc').addEventListener('click', () => {
+  setPlaying(false);
+  const tdc = eng.follow ? 360 : 0, from = eng.target ?? eng.deg;
+  eng.target = from + wrapDeg(tdc - from, 720);
+  setViewButtons(''); flyTo(enginePose('head'));
+});
+$('#epCollapse').addEventListener('click', (e) => {
+  const open = e.currentTarget.getAttribute('aria-expanded') === 'true';
+  e.currentTarget.setAttribute('aria-expanded', String(!open)); e.currentTarget.textContent = open ? 'Show' : 'Hide';
+  $('#epBody').hidden = open;
+  updateViewShift();
+});
+function updateEngine(dt) {
+  if (stage !== 'engine') return;
+  if (eng.target != null) {
+    const d = eng.target - eng.deg, step = 300 * dt;
+    if (Math.abs(d) <= step) { eng.deg = wrapDeg(eng.target, 720); eng.target = null; } else eng.deg += Math.sign(d) * step;
+  } else if (eng.playing) eng.deg = wrapDeg(eng.deg + eng.dps * dt, 720);
+  poseEngine(eng.deg);
+  const shown = Math.round(wrapDeg(eng.deg, 720));
+  if (+epCrank.value !== shown) epCrank.value = shown;
+  updateEngineReadouts();
+}
+setFollow(0);
+PARTS.forEach((p) => setVisible(p.id, p.visible)); showSystems();
+
+/* =====================================================================
    Loop
    ===================================================================== */
 let first = true, camFrozen = false, lastT = performance.now();
 function frame(now) {
   const dt = Math.min(0.25, Math.max(0, (now - lastT) / 1000)); lastT = now;
   updateBrakes(dt);
+  updateEngine(dt);
   if (tween) {
     const k = Math.min(1, (now - tween.start) / tween.ms), e = ease(k);
     camera.position.lerpVectors(tween.p0, tween.p1, e); controls.target.lerpVectors(tween.t0, tween.t1, e);
@@ -550,6 +673,9 @@ window.viewer = {
   dims: () => tDims.click(), parts: PARTS, bbox: bboxAll,
   stage: (n) => setStage(n), brake: (k, t, lining, slack) => { setBrake(k, false); if (lining != null) { setLining(BRAKES[k], lining); liningIn.value = lining; } if (slack != null) { BRAKE_UI[k].slack = slack; adjIn.value = BRAKE_UI[k].slackMax - slack; } bstate[k].t = bstate[k].target = t; },
   brakeView: (k, w) => { const p = brakePose(k, w); tween = null; camera.position.copy(p.pos); controls.target.copy(p.target); controls.update(); },
+  engine: (deg, play = false, follow) => { if (follow != null) setFollow(follow); eng.target = null; eng.deg = deg; setPlaying(play); poseEngine(deg); updateEngineReadouts(); },
+  engineView: (w) => { const p = enginePose(w); tween = null; camera.position.copy(p.pos); controls.target.copy(p.target); controls.update(); },
+  cycle: cycleState,
   // used for lining the model up with reference photos
   photoCam: (pos, target, up, fov) => { camFrozen = true; scene.fog = null; tween = null; camera.position.set(...pos); camera.up.set(...up); camera.fov = fov; camera.updateProjectionMatrix(); camera.lookAt(...target); },
 };
