@@ -1,4 +1,4 @@
-# CD200 Roadmaster 3D viewer
+# Honda CD200 Roadmaster 3D viewer
 
 An interactive, 1:1 scale 3D model of the owner's own Honda CD200 Roadmaster, built system by system
 so that mechanics can learn how each part works. It runs as a static web page on GitHub Pages
