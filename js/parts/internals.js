@@ -17,7 +17,7 @@ const CR = 0.044 / 2;                 // crank throw: half the 44 mm stroke (man
 const BORE_R = 0.053 / 2;             // 53 mm bore (manual)
 const ROD = 0.11;                     // con rod centres (est)
 const PIN_TO_CROWN = 0.027;           // gudgeon pin to piston crown (est)
-const CRANK_Y = -0.06;                // crank axis below the cylinder base (est; agrees with the generator cover position from photos)
+const CRANK_Y = -0.06;                // crank axis below the cylinder base (est; agrees with the generator cover position from photos; CRANK in core.js)
 const DECK = 0.1;                     // top of the barrel
 const CAM_Y = 0.152;                  // camshaft axis (est)
 const RB = 0.0095;                    // cam base circle radius (est)
@@ -248,7 +248,8 @@ function cycleState(deg) {
   });
 }
 
-function poseEngine(deg) {
+/** Pose the engine at a crank angle. gas: false hides the charge colours and spark glow (outside the engine stage). */
+function poseEngine(deg, { gas = true } = {}) {
   const th = deg * DEG;
   E.crankG.rotation.z = -th;
   const pinX = CR * Math.sin(th), pinY = CRANK_Y + CR * Math.cos(th);
@@ -266,7 +267,8 @@ function poseEngine(deg) {
     else if (phi < 540) { const t = (phi - 360) / 180; col = GAS.Intake; op = 0.14 + 0.2 * t; }
     else { const t = (phi - 540) / 165; col = GAS.Intake.clone().lerp(GAS.Compression, t); op = 0.34 + 0.16 * t; }
     c.gasMat.color.copy(col); c.gasMat.opacity = op;
-    c.glowMat.opacity = spark * 0.95;
+    c.glowMat.opacity = gas ? spark * 0.95 : 0;
+    c.gas.visible = gas;
   });
   const camDeg = deg / 2;
   E.cam.rotation.z = -camDeg * DEG;
@@ -281,7 +283,4 @@ function poseEngine(deg) {
 }
 poseEngine(0);
 
-// crankshaft axis in world coordinates (x, y); the gearbox lines up with it
-const CRANK_AXIS = CYL_BASE.clone().add(V(Math.sin(CYL_TILT), Math.cos(CYL_TILT)).multiplyScalar(CRANK_Y));
-
-export { CRANK_AXIS, GAP_VIS, SPARK_BTDC, STROKES, VALVE_EVENTS, cycleState, poseEngine };
+export { GAP_VIS, SPARK_BTDC, STROKES, VALVE_EVENTS, cycleState, poseEngine };

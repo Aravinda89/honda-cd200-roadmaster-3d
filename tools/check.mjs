@@ -40,6 +40,12 @@ const SHOTS = {
   e_head: { stage: 'engine', engine: { deg: 460 }, eview: 'head' },
   e_crank: { stage: 'engine', engine: { deg: 100 }, eview: 'crank' },
   e_tdc: { stage: 'engine', engine: { deg: 0 }, eview: 'head' },
+  // gearbox: gear is '1' 'N' '2' '3' '4'; lever is clutch lever travel in mm
+  g_neutral: { stage: 'gearbox', gearbox: { gear: 'N', rpm: 1200, lever: 0 }, gview: 'gears' },
+  g_first: { stage: 'gearbox', gearbox: { gear: '1', rpm: 2000, lever: 0 }, gview: 'gears' },
+  g_fourth: { stage: 'gearbox', gearbox: { gear: '4', rpm: 3000, lever: 0 }, gview: 'gears' },
+  g_clutch: { stage: 'gearbox', gearbox: { gear: '2', rpm: 2000, lever: 45 }, gview: 'clutch' },
+  g_chain: { stage: 'gearbox', gearbox: { gear: '3', rpm: 3000, lever: 0 }, gview: 'chain' },
   // close-ups for comparing details with the owner's photos: cam = [position, target, fov].
   // photoCam freezes the camera, so these run last and only when asked for (--shots=d_tank or --details).
   d_tank: { cam: [[0.75, 0.86, -0.62], [0.75, 0.78, -0.1], 30] },
@@ -102,6 +108,8 @@ if (info) {
       if (s.bview) v.brakeView(s.brake, s.bview);
       if (s.engine) v.engine(s.engine.deg, false, s.engine.follow);
       if (s.eview) v.engineView(s.eview);
+      if (s.gearbox) v.gearbox(s.gearbox);
+      if (s.gview) v.gearView(s.gview);
       if (s.view) v.view(s.view);
       v.explode(s.explode || 0);
       if (s.dims) v.dims();

@@ -201,6 +201,14 @@ input[type="range"] { width: 100%; min-width: 0; accent-color: var(--accent); }
 .ep-figs dt, .ep-figs dd { margin: 0; padding: 5px 0; border-bottom: 1px solid var(--line); }
 .ep-figs dt { color: var(--muted); font-size: 12.5px; }
 .ep-figs dd { font: 500 11.5px/1.45 var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; padding-left: 10px; }
+
+/* ---------- stage 4: clutch and gearbox ---------- */
+.gp-gear { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.gp-label { font: 600 12.5px/1 var(--font-display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.gp-gear output { min-width: 34px; text-align: center; font: 700 30px/1 var(--font-display); color: var(--ink); background: var(--chip); border-radius: 8px; padding: 4px 8px; font-variant-numeric: tabular-nums; }
+.gp-shift { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.gp-shift .ep-step { padding: 10px 6px; }
+.gp-pattern { margin: -4px 0 0; font-size: 12px; color: var(--muted); }
 .stages button { border: 0; background: none; padding: 0; font: inherit; color: inherit; text-align: left; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
 .stages button:hover { text-decoration-color: var(--accent); }
 .stages .tag.soon { color: var(--muted); }

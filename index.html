@@ -70,6 +70,19 @@
       <p class="src">Source: Haynes manual no. 572, chapter 1, fault diagnosis: engine.</p>
     </section>
 
+    <section id="gearFaults" hidden aria-labelledby="gearFaultsTitle">
+      <h2 class="block-title" id="gearFaultsTitle">Clutch and gearbox fault finder</h2>
+      <div class="faults">
+        <div class="fault"><h3>Clutch slips: revs rise, bike does not speed up</h3><ul><li><b>No free play at the lever:</b> re-adjust to 10–20 mm.</li><li><b>Worn friction plates:</b> 3.0 mm new, renew the set at 2.6 mm.</li><li><b>Weak springs:</b> 37.8 mm free length, renew at 34.7 mm.</li></ul></div>
+        <div class="fault"><h3>Clutch drags: gears crunch, bike creeps with the lever pulled, neutral hard to find</h3><ul><li><b>Too much free play:</b> re-adjust.</li><li><b>Notches worn in the drum slots or burrs on the plate tongues:</b> dress them with a file if not too deep.</li></ul></div>
+        <div class="fault"><h3>Clutch lever stiff</h3><ul><li><b>Damaged, trapped or frayed cable:</b> renew it, check the routing has no sharp bends, and lubricate it.</li></ul></div>
+        <div class="fault"><h3>Gears hard to engage</h3><ul><li><b>Bent selector forks:</b> renew.</li><li><b>Gear clusters wrongly assembled:</b> check the order of the pinions and the thrust washers.</li></ul></div>
+        <div class="fault"><h3>Jumps out of gear</h3><ul><li><b>Worn dogs on the pinions:</b> renew the pinions.</li><li><b>Stopper arm not seating:</b> check its action and spring.</li></ul></div>
+        <div class="fault"><h3>Gear pedal does not return</h3><ul><li><b>Broken return spring:</b> renew it.</li></ul></div>
+      </div>
+      <p class="src">Source: Haynes manual no. 572, chapter 1, fault diagnosis: clutch and gearbox.</p>
+    </section>
+
     <section aria-labelledby="partsTitle">
       <h2 class="block-title" id="partsTitle">Parts by system</h2>
       <div id="systems"></div>
@@ -90,9 +103,9 @@
       <ol class="stages">
         <li><button type="button" data-stage="body" aria-pressed="true">Outer body</button> <span class="tag">Done</span></li>
         <li><button type="button" data-stage="brakes" aria-pressed="false">Brakes</button> <span class="tag">Done</span></li>
-        <li class="now"><button type="button" data-stage="engine" aria-pressed="false">Engine internals</button> <span class="tag">New</span></li>
-        <li>Clutch and gearbox <span class="tag soon">Next</span></li>
-        <li>Electrical <span class="tag soon">Later</span></li>
+        <li><button type="button" data-stage="engine" aria-pressed="false">Engine internals</button> <span class="tag">Done</span></li>
+        <li class="now"><button type="button" data-stage="gearbox" aria-pressed="false">Clutch and gearbox</button> <span class="tag">New</span></li>
+        <li>Electrical <span class="tag soon">Next</span></li>
       </ol>
     </section>
   </aside>
@@ -106,6 +119,7 @@
         <button type="button" id="st-body" data-stage="body" aria-pressed="true">Body</button>
         <button type="button" id="st-brakes" data-stage="brakes" aria-pressed="false">Brakes</button>
         <button type="button" id="st-engine" data-stage="engine" aria-pressed="false">Engine</button>
+        <button type="button" id="st-gearbox" data-stage="gearbox" aria-pressed="false">Gearbox</button>
       </div>
       <div class="seg" role="group" aria-label="Camera view">
         <button type="button" id="v-three" data-view="three" aria-pressed="true">3/4</button>
@@ -238,6 +252,65 @@
           </div>
         </details>
         <p class="bp-note" id="epNote"></p>
+      </div>
+    </section>
+
+    <section id="gearPanel" class="bpanel" hidden aria-label="Clutch and gearbox controls">
+      <div class="bp-head">
+        <div class="gp-gear"><span class="gp-label">Gear</span><output id="gpGear" aria-live="polite">N</output><span class="chip" id="chNeutral">N lamp on</span></div>
+        <button type="button" class="bp-collapse" id="gpCollapse" aria-expanded="true" aria-controls="gpBody">Hide</button>
+      </div>
+      <div id="gpBody">
+        <button type="button" class="hold" id="gpHold">Hold to pull the clutch</button>
+        <div class="gp-shift" role="group" aria-label="Gear pedal">
+          <button type="button" class="ep-step" id="gpDown">Press ▼</button>
+          <button type="button" class="ep-step" id="gpNeutral">Find neutral</button>
+          <button type="button" class="ep-step" id="gpUp">Lift ▲</button>
+        </div>
+        <p class="gp-pattern">Pattern 1-N-2-3-4: press for 1st, lift for 2nd, 3rd and 4th. Neutral is half a step between 1st and 2nd.</p>
+        <div class="bp-slider">
+          <label for="gpRpm">Engine</label>
+          <input type="range" id="gpRpm" min="1200" max="6000" step="100" value="1200">
+          <output id="gpRpmOut" for="gpRpm">1,200 rpm</output>
+        </div>
+        <div class="bp-slider">
+          <label for="gpLever">Lever travel</label>
+          <input type="range" id="gpLever" min="0" max="45" step="0.5" value="0">
+          <output id="gpLeverOut" for="gpLever">0 mm</output>
+        </div>
+        <p class="bp-firm" id="gpWarn" hidden></p>
+        <dl class="bp-read">
+          <div><dt>Clutch</dt><dd><span class="chip" id="chClutch">Engaged</span><small id="rdClutch"></small></dd></div>
+          <div><dt>Gear ratio</dt><dd><span id="rdRatio">Neutral</span><small id="rdRatioSub"></small></dd></div>
+          <div><dt>Rear wheel</dt><dd><span id="rdWheel">0 rpm</span><small id="rdWheelSub"></small></dd></div>
+          <div><dt>Main / layshaft</dt><dd><span id="rdShafts">0 / 0 rpm</span></dd></div>
+        </dl>
+        <div class="bp-row">
+          <button type="button" data-gview="clutch">Clutch view</button>
+          <button type="button" data-gview="gears">Gearbox view</button>
+          <button type="button" data-gview="chain">Chain view</button>
+          <button type="button" id="gpInside" aria-pressed="true">See inside</button>
+        </div>
+        <ol class="bp-steps" id="gpSteps"></ol>
+        <details class="bp-checks">
+          <summary>Workshop checks</summary>
+          <div class="inner">
+            <div class="bp-slider">
+              <label for="gpAdj">Cable adjuster</label>
+              <input type="range" id="gpAdj" min="0" max="30" step="0.5" value="16" aria-describedby="gpFree">
+              <output id="gpAdjOut" for="gpAdj">14 mm</output>
+            </div>
+            <div class="bp-wear-row"><span class="chip" id="chFree">In spec</span><p class="bp-wear" id="gpFree"></p></div>
+            <div class="bp-slider">
+              <label for="gpPlate">Friction plate</label>
+              <input type="range" id="gpPlate" min="2.3" max="3.0" step="0.05" value="3.0" aria-describedby="gpPlateTxt">
+              <output id="gpPlateOut" for="gpPlate">3.00 mm</output>
+            </div>
+            <div class="bp-wear-row"><span class="chip" id="chPlate">Plates OK</span><p class="bp-wear" id="gpPlateTxt"></p></div>
+            <dl class="ep-figs" id="gpFigs"></dl>
+          </div>
+        </details>
+        <p class="bp-note" id="gpNote"></p>
       </div>
     </section>
 

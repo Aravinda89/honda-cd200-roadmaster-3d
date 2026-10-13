@@ -20,6 +20,17 @@ const FD = V(-Math.sin(RAKE), Math.cos(RAKE));   // up the fork
 const FF = V(Math.cos(RAKE), Math.sin(RAKE));    // forward, square to the fork
 const forkPt = (t, fwd = 0, z = 0) => FA.clone().addScaledVector(FD, t).addScaledVector(FF, fwd).setZ(z);
 const CYL_BASE = V(0.68, 0.42), CYL_TILT = 8 * DEG;
+// Gearbox shafts (est). The crank axis is 60 mm down the cylinder axis from CYL_BASE (stage 3). The
+// layshaft carries the final drive sprocket, under the sprocket cover on the left crankcase. The
+// mainshaft sits between them at the primary-gear and gear-pair centre distances.
+const CRANK = CYL_BASE.clone().add(V(Math.sin(CYL_TILT), Math.cos(CYL_TILT)).multiplyScalar(-0.06));
+const LAYSHAFT = V(0.545, 0.33);
+const PRIMARY_C = 0.068, GEAR_C = 0.066;
+const MAINSHAFT = (() => {
+  const d = LAYSHAFT.distanceTo(CRANK), x = (PRIMARY_C ** 2 - GEAR_C ** 2 + d * d) / (2 * d);
+  const u = LAYSHAFT.clone().sub(CRANK).normalize(), h = Math.sqrt(Math.max(0, PRIMARY_C ** 2 - x * x));
+  return CRANK.clone().addScaledVector(u, x).add(V(-u.y, u.x).multiplyScalar(u.x < 0 ? -h : h));
+})();
 
 /* ---------- textures drawn on canvas ---------- */
 function canvasTexture(w, h, draw) {
@@ -55,9 +66,14 @@ const TEX = {
     for (let x = 0; x < w; x += 9) { g.fillStyle = 'rgba(255,255,255,0.45)'; g.fillRect(x, 0, 3, h); g.fillStyle = 'rgba(60,75,85,0.2)'; g.fillRect(x + 4, 0, 2, h); }
     for (let y = 0; y < h; y += 28) { g.fillStyle = 'rgba(60,75,85,0.14)'; g.fillRect(0, y, w, 1); }
   }),
-  // instrument face as on the owner's bike (photo set3-20): 0–160 km/h dial with a green gear-range
-  // band and odometer on the left, TURN / NEUTRAL / HIGH BEAM lamps in a column on the right
-  dial: canvasTexture(512, 330, (g, w, h) => {
+  dial: dialTexture(false),
+  dialN: dialTexture(true),
+};
+// instrument face as on the owner's bike (photo set3-20): 0–160 km/h dial with a green gear-range
+// band and odometer on the left, TURN / NEUTRAL / HIGH BEAM lamps in a column on the right.
+// neutralOn draws the green neutral lamp lit.
+function dialTexture(neutralOn) {
+  return canvasTexture(512, 330, (g, w, h) => {
     g.fillStyle = '#0b0d0e'; g.fillRect(0, 0, w, h);
     const cx = 188, cy = 168, r = 152, ang = (v) => (232 - 1.675 * v) * DEG;
     const at = (v, k) => [cx + Math.cos(ang(v)) * r * k, cy - Math.sin(ang(v)) * r * k];
@@ -81,12 +97,16 @@ const TEX = {
     g.beginPath(); g.moveTo(...at(180, 0.12)); g.lineTo(...at(0, 0.8)); g.stroke();
     g.fillStyle = '#e9dfb8'; g.beginPath(); g.arc(cx, cy, 15, 0, Math.PI * 2); g.fill();
     g.strokeStyle = '#eceee6'; g.lineWidth = 3; g.strokeRect(384, 22, 112, 286);
-    [['TURN', '#5d5c34'], ['NEUTRAL', '#1d6b45'], ['HIGH BEAM', '#1f3a7a']].forEach(([t, c], i) => {
+    [['TURN', '#5d5c34'], ['NEUTRAL', neutralOn ? '#5dffa8' : '#1d6b45'], ['HIGH BEAM', '#1f3a7a']].forEach(([t, c], i) => {
       const y = 36 + i * 92;
+      if (t === 'NEUTRAL' && neutralOn) { g.shadowColor = '#5dffa8'; g.shadowBlur = 24; }
       g.fillStyle = c; g.fillRect(408, y, 64, 44);
+      g.shadowBlur = 0;
       g.fillStyle = '#eceee6'; g.font = '700 15px Arial, sans-serif'; g.fillText(t, 440, y + 62);
     });
-  }),
+  });
+}
+Object.assign(TEX, {
   sideBadge: canvasTexture(1024, 328, (g, w, h) => {
     // ROAD MASTER / CD200 badge on the side covers (photo set3-01); transparent outside the badge
     const chrome = '#dfe3e6', dark = '#15171a';
@@ -125,7 +145,7 @@ const TEX = {
     g.lineWidth = 10; g.strokeStyle = '#0b0c0d'; g.strokeText('HONDA', cx, cy + 104);
     g.fillStyle = chrome; g.fillText('HONDA', cx, cy + 104);
   })),
-};
+});
 
 /* ---------- materials (each part makes its own, so highlighting stays per part) ---------- */
 const MAT = {
@@ -350,6 +370,7 @@ const SYSTEMS = [
   { id: 'brakes', name: 'Brakes' },
   { id: 'engine', name: 'Engine (outside)' },
   { id: 'internals', name: 'Engine internals' },
+  { id: 'transmission', name: 'Clutch and gearbox' },
   { id: 'exhaust', name: 'Exhaust' },
   { id: 'lights', name: 'Lights & instruments' },
   { id: 'controls', name: 'Controls' },
@@ -367,4 +388,4 @@ function addPart(id, sys, name, basis, desc, explode = [0, 0, 0]) {
 function setExplode(obj, v) { obj.userData.explode = toV(v); obj.userData.home = obj.position.clone(); }
 function sideGroup(parent, explode) { const g = new THREE.Group(); parent.add(g); setExplode(g, explode); return g; }
 
-export { $, BASIS, CYL_BASE, CYL_TILT, DEG, FA, FD, MAT, PARTS, R, RA, RIM, SYSTEMS, TEX, V, WB, Y_UP, addPart, arcPts, beltPath, bike, byId, chainLinks, extrude, fenderGeometry, forkPt, gearShape, hullOfCircles, lathe, loftGeometry, mesh, qAlong, rbox, rod, roundRectShape, sideGroup, smooth, superLoft, surfPatch, tube };
+export { $, BASIS, CRANK, CYL_BASE, CYL_TILT, DEG, GEAR_C, LAYSHAFT, MAINSHAFT, PRIMARY_C, FA, FD, MAT, PARTS, R, RA, RIM, SYSTEMS, TEX, V, WB, Y_UP, addPart, arcPts, beltPath, bike, byId, chainLinks, extrude, fenderGeometry, forkPt, gearShape, hullOfCircles, lathe, loftGeometry, mesh, qAlong, rbox, rod, roundRectShape, sideGroup, smooth, superLoft, surfPatch, tube };

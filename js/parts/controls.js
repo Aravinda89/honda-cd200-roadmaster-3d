@@ -1,6 +1,9 @@
 // Handlebar, clutch lever, mirrors, gear and kick-start pedals, control cables.
 import * as THREE from 'three';
 import { MAT, V, addPart, forkPt, mesh, qAlong, rbox, rod, sideGroup, tube } from '../core.js';
+import { CHANGE_SHAFT, CLUTCH_ARM } from './gearbox.js';
+
+const CONTROLS = {};
 
 /* =====================================================================
    Build: controls
@@ -18,12 +21,12 @@ const BAR_R = [[0.945, 0.975, 0.0], [0.945, 0.975, 0.05], [0.94, 1.03, 0.085], [
   });
 }
 {
-  const g = addPart('levers', 'controls', 'Clutch lever', 'manual', 'Left-hand lever. Free play at the lever end should be 10–20 mm. Set it with the adjuster at the crankcase end of the cable; the threaded adjuster at the lever gives fine adjustment.');
-  [-1].forEach((s) => {
-    const sg = sideGroup(g, [0.04, 0.3, 0.12 * s]);
-    rbox(0.03, 0.026, 0.03, 0.006, MAT.alloy(), sg, V(0.8, 1.075, 0.275 * s));
-    tube([[0.802, 1.071, 0.28 * s], [0.835, 1.06, 0.3 * s], [0.81, 1.046, 0.36 * s], [0.77, 1.034, 0.42 * s]], 0.0058, MAT.chrome(), sg, 32, 8);
-  });
+  const g = addPart('levers', 'controls', 'Clutch lever', 'manual', 'Left-hand lever. Free play at the lever end should be 10–20 mm. Set it with the adjuster at the lower end of the cable, at the operating arm on the right-hand crankcase cover; the threaded adjuster and lockring at the lever give fine adjustment.');
+  const sg = sideGroup(g, [0.04, 0.3, -0.12]);
+  rbox(0.03, 0.026, 0.03, 0.006, MAT.alloy(), sg, V(0.8, 1.075, -0.275));
+  const piv = V(0.802, 1.071, -0.28), lg = new THREE.Group(); lg.position.copy(piv); sg.add(lg);
+  tube([[0, 0, 0], [0.033, -0.011, -0.02], [0.008, -0.025, -0.08], [-0.032, -0.037, -0.14]], 0.0058, MAT.chrome(), lg, 32, 8);
+  CONTROLS.clutchLever = { group: lg, reach: Math.hypot(0.032, 0.14) };
 }
 {
   const g = addPart('mirrors', 'controls', 'Mirrors', 'photo', 'Round chrome mirrors on tall stems.');
@@ -37,18 +40,29 @@ const BAR_R = [[0.945, 0.975, 0.0], [0.945, 0.975, 0.05], [0.94, 1.03, 0.085], [
   });
 }
 {
-  const g = addPart('pedals', 'controls', 'Gear and kick-start pedals', 'est', 'Gear pedal on the left, kick-start lever on the right. The rear brake pedal is listed under Brakes.');
+  const g = addPart('pedals', 'controls', 'Gear and kick-start pedals', 'est', 'Gear pedal on the left, on the end of the gearchange shaft; kick-start lever on the right. Shift pattern: press down from neutral for 1st, lift for 2nd, 3rd and 4th; neutral is half a step between 1st and 2nd. A return spring brings the pedal back after each shift. The rear brake pedal is listed under Brakes.');
   const ch = MAT.chrome(), rub = MAT.rubber();
   const right = sideGroup(g, [0, 0, 0.2]), left = sideGroup(g, [0, 0, -0.2]);
   tube([[0.585, 0.38, 0.155], [0.53, 0.37, 0.19], [0.47, 0.355, 0.205]], 0.009, ch, right, 24, 8);
   rod([0.47, 0.355, 0.2], [0.47, 0.355, 0.25], 0.012, rub, right);
-  tube([[0.56, 0.31, -0.15], [0.605, 0.29, -0.18], [0.65, 0.275, -0.19]], 0.008, ch, left, 24, 8);
-  rod([0.65, 0.275, -0.18], [0.65, 0.275, -0.235], 0.011, rub, left);
+  const pg = new THREE.Group(); pg.position.set(CHANGE_SHAFT.x, CHANGE_SHAFT.y, -0.15); left.add(pg);
+  const boss = mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.02, 16), ch, pg); boss.rotation.x = Math.PI / 2;
+  tube([[0, 0, 0], [0.045, 0.008, -0.03], [0.088, 0.016, -0.04]], 0.008, ch, pg, 24, 8);
+  rod([0.088, 0.016, -0.03], [0.088, 0.016, -0.085], 0.011, rub, pg);
+  CONTROLS.gearPedal = { group: pg };
 }
 {
-  const g = addPart('cables', 'controls', 'Control cables', 'est', 'Clutch, throttle and speedometer cables. Routing is approximate. The front brake cable is listed under Brakes.', [0, 0.15, 0]);
+  const g = addPart('ccable', 'controls', 'Clutch cable', 'manual', 'From the clutch lever on the left of the handlebar, round to the operating arm on top of the right-hand crankcase cover. Main adjustment is at the lower end: slacken the locknut and turn the adjuster nut until the lever end has 10–20 mm of free play, then tighten the locknut. Fine adjustment is the threaded adjuster and lockring at the lever. A damaged, trapped or frayed cable makes the clutch stiff: check the routing and lubricate it. The routing between the ends is approximate.', [0, 0.15, 0]);
+  const blk = MAT.black(), A = CLUTCH_ARM;
+  tube([[0.8, 1.068, -0.285], [0.86, 1.0, -0.17], [0.95, 0.86, -0.03], [0.9, 0.7, 0.09], [0.78, 0.55, 0.165], [A.x + 0.035, A.y + 0.04, A.z], [A.x + 0.012, A.y + 0.006, A.z]], 0.0032, blk, g, 80, 6);
+  rod([A.x + 0.022, A.y + 0.017, A.z], [A.x + 0.012, A.y + 0.006, A.z], 0.0045, MAT.chrome(), g, 10);   // lower adjuster
+  rod([A.x + 0.012, A.y + 0.006, A.z], A, 0.001, MAT.chrome(), g, 6);                                  // inner cable to the arm
+}
+{
+  const g = addPart('cables', 'controls', 'Control cables', 'est', 'Throttle and speedometer cables. Routing is approximate. The clutch cable is listed separately; the front brake cable is under Brakes.', [0, 0.15, 0]);
   const blk = MAT.black();
-  tube([[0.8, 1.068, -0.285], [0.86, 1.0, -0.17], [0.93, 0.88, -0.09], [0.94, 0.75, -0.07], [0.87, 0.62, -0.1], [0.72, 0.5, -0.14], [0.6, 0.43, -0.152]], 0.0032, blk, g, 72, 6);
   tube([[0.775, 1.05, 0.3], [0.85, 0.99, 0.17], [0.92, 0.87, 0.08], [0.88, 0.74, 0.05], [0.76, 0.66, 0.04], [0.68, 0.63, 0.04]], 0.0032, blk, g, 56, 6);
   tube([[1.27, 0.34, -0.085], [1.2, 0.5, -0.12], [1.11, 0.78, -0.11], [1.02, 0.95, -0.05], forkPt(0.755, 0.07).add(V(0.0, -0.03))], 0.003, blk, g, 48, 6);
 }
+
+export { CONTROLS };

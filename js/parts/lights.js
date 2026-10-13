@@ -6,6 +6,12 @@ import { DEG, MAT, TEX, V, addPart, forkPt, lathe, mesh, qAlong, rbox, rod, side
    Build: lights & instruments
    ===================================================================== */
 const HL = forkPt(0.618, 0.138);
+const SPEEDO = {};
+/** Light or put out the green neutral lamp on the speedometer face. */
+function setNeutralLamp(on) {
+  const map = on ? TEX.dialN : TEX.dial;
+  if (SPEEDO.face.map !== map) { SPEEDO.face.map = map; SPEEDO.face.needsUpdate = true; }
+}
 function indicator(parent, center, dir, stalkFrom, chrome, amber) {
   const d = dir.clone().normalize();
   lathe([[0, 0], [0.02, 0], [0.033, 0.022], [0.036, 0.032]], center.clone().addScaledVector(d, -0.032), d, chrome, parent, 24);
@@ -30,7 +36,9 @@ function indicator(parent, center, dir, stalkFrom, chrome, amber) {
   rbox(0.1, 0.06, 0.15, 0.012, blk, sp);
   rbox(0.104, 0.012, 0.154, 0.005, blk, sp, V(0, 0.026, 0));
   const face = new THREE.PlaneGeometry(0.13, 0.084); face.rotateX(-Math.PI / 2); face.rotateY(-Math.PI / 2);
-  mesh(face, new THREE.MeshStandardMaterial({ map: TEX.dial, roughness: 0.35, metalness: 0 }), sp, false).position.y = 0.0325;
+  const faceMat = new THREE.MeshStandardMaterial({ map: TEX.dial, roughness: 0.35, metalness: 0 });
+  mesh(face, faceMat, sp, false).position.y = 0.0325;
+  SPEEDO.face = faceMat;
   rod(forkPt(0.735, -0.01), forkPt(0.755, 0.055), 0.008, MAT.black(), g);
 }
 {
@@ -68,3 +76,5 @@ function indicator(parent, center, dir, stalkFrom, chrome, amber) {
     rod(c, V(1.176, 0.742, s * 0.14), 0.006, MAT.black(), sg);
   });
 }
+
+export { setNeutralLamp };

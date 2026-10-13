@@ -4,15 +4,16 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-import { $, BASIS, FA, PARTS, RA, SYSTEMS, V, WB, bike, byId } from './core.js';
+import { $, BASIS, DEG, FA, LAYSHAFT, MAINSHAFT, PARTS, R, RA, SYSTEMS, V, WB, bike, byId } from './core.js';
 import { SEAT_TOP } from './parts/body.js';
 import './parts/chassis.js';
-import './parts/wheels.js';
+import { FRONT_R, REAR_R, poseFinalDrive } from './parts/wheels.js';
 import { cylWorld } from './parts/engine.js';
 import { GAP_VIS, SPARK_BTDC, VALVE_EVENTS, cycleState, poseEngine } from './parts/internals.js';
+import { DRUM_POS, GB, LIFT_MAX, RATIOS, SEQ, TEETH, engagedGear, poseGearbox, stepGearbox } from './parts/gearbox.js';
 import './parts/exhaust.js';
-import './parts/lights.js';
-import './parts/controls.js';
+import { setNeutralLamp } from './parts/lights.js';
+import { CONTROLS } from './parts/controls.js';
 import { BRAKES, FB, LINING_LIMIT, RB, TAIL_GLOW, poseBrake, poseLinkages, setLining } from './parts/brakes.js';
 
 /* =====================================================================
@@ -161,7 +162,7 @@ controls.addEventListener('start', () => { tween = null; setViewButtons(''); });
    Explode
    ===================================================================== */
 let explodeNow = 0, explodeTarget = 0;
-const HIDE_ON_EXPLODE = ['cables', 'fcable', 'rrod', 'stopsw'];
+const HIDE_ON_EXPLODE = ['cables', 'ccable', 'fcable', 'rrod', 'stopsw'];
 function applyExplode(t) {
   bike.traverse((o) => { if (o.userData.explode) o.position.copy(o.userData.home).addScaledVector(o.userData.explode, t); });
   HIDE_ON_EXPLODE.forEach((id) => { const p = byId.get(id); p.group.visible = p.visible && t < 0.04; });
@@ -174,9 +175,11 @@ explodeInput.addEventListener('input', () => { explodeTarget = explodeInput.valu
    ===================================================================== */
 const eyeSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g class="open"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></g><g class="shut"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7a10 10 0 0 0 5.4-1.6"/></g></svg>';
 let stage = 'body';
-const STAGE_ONLY = { internals: 'engine' };   // systems that exist only in one stage (they sit inside other parts)
-const inStage = (p) => !STAGE_ONLY[p.sys] || STAGE_ONLY[p.sys] === stage;
-function showSystems() { SYSTEMS.forEach((s) => { $(`#sys-${s.id}`).hidden = !!STAGE_ONLY[s.id] && STAGE_ONLY[s.id] !== stage; }); }
+// systems that sit inside other parts and only show in the stages listed
+const STAGE_ONLY = { internals: ['engine', 'gearbox'], transmission: ['gearbox'] };
+const inSys = (sys) => !STAGE_ONLY[sys] || STAGE_ONLY[sys].includes(stage);
+const inStage = (p) => inSys(p.sys);
+function showSystems() { SYSTEMS.forEach((s) => { $(`#sys-${s.id}`).hidden = !inSys(s.id); }); }
 const systemsEl = $('#systems');
 SYSTEMS.forEach((sys) => {
   const list = PARTS.filter((p) => p.sys === sys.id);
@@ -348,8 +351,11 @@ const BRAKE_CONTEXT = { fwheel: 0.12, rwheel: 0.12, bars: 0.45, pegs: 0.3 };   /
 const ENGINE_FOCUS = new Set(PARTS.filter((p) => p.sys === 'internals').map((p) => p.id));
 const ENGINE_SHELL = ['cylinders', 'crankcase'];                  // see-through when "See inside" is on, solid when off
 const ENGINE_CONTEXT = { headers: 0.12, frame: 0.06, fwheel: 0.05, rwheel: 0.05 };
+const GEAR_FOCUS = new Set(PARTS.filter((p) => p.sys === 'transmission').map((p) => p.id).concat(['drive', 'rwheel', 'levers', 'ccable', 'pedals']));
+const GEAR_SHELL = ['crankcase', 'chaincase'];                   // see-through when "See inside" is on
+const GEAR_CONTEXT = { crank: 0.3, pistons: 0.14, conrods: 0.14, camchain: 0.1, camshaft: 0.08, rockers: 0.08, valves: 0.08, plugs: 0.08, cylinders: 0.06, bars: 0.35, speedo: 0.5, frame: 0.06, swingarm: 0.1 };
 const NO_FOCUS = new Set();
-const stageFocus = () => (stage === 'brakes' ? BRAKE_FOCUS : stage === 'engine' ? ENGINE_FOCUS : NO_FOCUS);
+const stageFocus = () => ({ brakes: BRAKE_FOCUS, engine: ENGINE_FOCUS, gearbox: GEAR_FOCUS }[stage] || NO_FOCUS);
 const bstate = { f: { t: 0, target: 0 }, r: { t: 0, target: 0 } };
 let brakeKey = 'f', seeInside = true, holding = false;
 const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -378,6 +384,8 @@ function applyGhosts() {
       else if (seeInside && (p.id === 'fplate' || p.id === 'rplate')) op = 0.16;
     } else if (stage === 'engine' && !ENGINE_FOCUS.has(p.id)) {
       op = ENGINE_SHELL.includes(p.id) ? (eng.inside ? 0.13 : null) : ENGINE_CONTEXT[p.id] ?? 0.04;
+    } else if (stage === 'gearbox' && !GEAR_FOCUS.has(p.id)) {
+      op = GEAR_SHELL.includes(p.id) ? (gb.inside ? 0.12 : null) : GEAR_CONTEXT[p.id] ?? 0.04;
     }
     setGhost(p, op);
   });
@@ -459,7 +467,7 @@ function setBrake(key, fly = true) {
   if (fly) { setViewButtons(''); flyTo(brakePose(key, 'hub')); }
 }
 function updateViewShift() {
-  const el = stage === 'brakes' ? panelEl : stage === 'engine' ? enginePanelEl : null;
+  const el = { brakes: panelEl, engine: enginePanelEl, gearbox: gearPanelEl }[stage];
   let x = 0, y = 0;
   if (el && !el.hidden) {
     const r = el.getBoundingClientRect(), v = viewport.getBoundingClientRect();
@@ -468,9 +476,9 @@ function updateViewShift() {
   }
   if (x !== viewShift.x || y !== viewShift.y) { viewShift = { x, y }; resize(); }
 }
-const enginePanelEl = $('#enginePanel');
-[panelEl, enginePanelEl].forEach((el) => new ResizeObserver(() => updateViewShift()).observe(el));
-const EYEBROW = { body: 'Stage 1 · Outer body', brakes: 'Stage 2 · Brakes', engine: 'Stage 3 · Engine' };
+const enginePanelEl = $('#enginePanel'), gearPanelEl = $('#gearPanel');
+[panelEl, enginePanelEl, gearPanelEl].forEach((el) => new ResizeObserver(() => updateViewShift()).observe(el));
+const EYEBROW = { body: 'Stage 1 · Outer body', brakes: 'Stage 2 · Brakes', engine: 'Stage 3 · Engine', gearbox: 'Stage 4 · Clutch and gearbox' };
 function setStage(next) {
   if (stage === next) return;
   stage = next;
@@ -478,8 +486,8 @@ function setStage(next) {
   document.querySelectorAll('[data-stage]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.stage === stage)));
   $('#stage').classList.toggle('panel-mode', !body);
   $('#eyebrow').textContent = EYEBROW[stage];
-  panelEl.hidden = stage !== 'brakes'; enginePanelEl.hidden = stage !== 'engine';
-  $('#faults').hidden = stage !== 'brakes'; $('#engineFaults').hidden = stage !== 'engine';
+  panelEl.hidden = stage !== 'brakes'; enginePanelEl.hidden = stage !== 'engine'; gearPanelEl.hidden = stage !== 'gearbox';
+  $('#faults').hidden = stage !== 'brakes'; $('#engineFaults').hidden = stage !== 'engine'; $('#gearFaults').hidden = stage !== 'gearbox';
   $('.bottombar').hidden = !body;
   tDims.hidden = !body; if (!body) setDims(false);
   explodeTarget = explodeNow = 0; explodeInput.value = 0; explodeOut.textContent = '0%'; applyExplode(0);
@@ -487,10 +495,12 @@ function setStage(next) {
   ['f', 'r'].forEach((k) => { bstate[k].t = bstate[k].target = 0; });
   holding = false;
   if (stage === 'engine') { eng.target = null; setPlaying(!reduceMotion()); }
+  gbEndHold(); if (stage !== 'gearbox') setNeutralLamp(false);
   applyGhosts(); select(null);
   updateViewShift();
   if (stage === 'brakes') setBrake(brakeKey, true);
   else if (stage === 'engine') { setFollow(eng.follow); setViewButtons(''); flyTo(enginePose('cyl')); }
+  else if (stage === 'gearbox') { gbReadouts(); setViewButtons(''); flyTo(gearPose('gears')); }
   else goView('three');
   syncUI();
 }
@@ -640,6 +650,159 @@ function updateEngine(dt) {
   updateEngineReadouts();
 }
 setFollow(0);
+
+/* =====================================================================
+   Stage 4: clutch and gearbox (pull the clutch, shift, follow the power to the rear wheel)
+   ===================================================================== */
+const VS = 1 / 60;                                     // slow motion: everything turns at 1/60 of real speed
+const RPM2RAD = (2 * Math.PI / 60) * VS;                // real rpm -> rad/s as shown
+const CLUTCH = { travelMax: 45, spec: [10, 20], bite: 8, slackMax: 30 };
+const PLATE = { new: 3.0, limit: 2.6 };
+const gb = { rpm: 1200, t: 0, target: 0, holding: false, slack: 14, plate: 3.0, drumDeg: DRUM_POS.N, drumTarget: DRUM_POS.N, pedalDir: 0, pedalPhase: 1, pedalAng: 0, main: 0, lay: 0, inside: true, warn: 0 };
+const OVERALL = (g) => RATIOS.primary * RATIOS.gears[g - 1] * RATIOS.final;
+const kmhAt = (wheelRpm) => wheelRpm * 2 * Math.PI * R * 60 / 1000;
+const gearLabel = (deg) => SEQ.find((k) => Math.abs(DRUM_POS[k] - deg) < 0.5) ?? null;
+const clutchCouple = () => 1 - Math.min(1, Math.max(0, (gb.t - gb.slack) / CLUTCH.bite));   // 1 = plates clamped, 0 = free
+const clutchLift = () => LIFT_MAX * Math.min(1, Math.max(0, (gb.t - gb.slack) / (CLUTCH.travelMax - gb.slack)));
+const GEAR_STEPS = [
+  'Crankshaft: the 19-tooth primary drive gear on its right-hand end turns with it.',
+  'Primary driven gear and clutch outer drum: 69 teeth, so they turn 3.632 times slower, the opposite way.',
+  'Clutch: the friction plates turn with the drum, the plain plates with the clutch centre. Clamped by the springs, they turn together.',
+  'Mainshaft: turns with the clutch centre. Its pinions turn the layshaft pinions, all of them, all the time.',
+  'Selected gear: the dogs on a sliding pinion lock one free pinion to its shaft, so only that pair carries the drive.',
+  'Layshaft: the gearbox output. It turns the final drive sprocket on its left-hand end.',
+  'Chain and rear sprocket: 2.333 : 1 down to the rear wheel.',
+];
+const gpHold = $('#gpHold'), gpLever = $('#gpLever'), gpRpm = $('#gpRpm'), gpAdj = $('#gpAdj'), gpPlate = $('#gpPlate');
+$('#gpSteps').innerHTML = GEAR_STEPS.map((t) => `<li>${t}</li>`).join('');
+gpLever.max = CLUTCH.travelMax; gpAdj.max = CLUTCH.slackMax;
+$('#gpFigs').innerHTML = [
+  ['Primary reduction', `${RATIOS.primary.toFixed(3)} : 1 (19T crank gear)`],
+  ...RATIOS.gears.map((r, i) => [`${['1st', '2nd', '3rd', '4th'][i]} gear`, `${r.toFixed(3)} : 1 (${TEETH.main[i]}T / ${TEETH.lay[i]}T)`]),
+  ['Final reduction', `${RATIOS.final.toFixed(3)} : 1`],
+  ...RATIOS.gears.map((r, i) => [`${['1st', '2nd', '3rd', '4th'][i]}: road speed per 1,000 rpm`, `${kmhAt(1000 / OVERALL(i + 1)).toFixed(1)} km/h (calc.)`]),
+  ['Clutch plates', '5 friction, 4 plain, 4 springs'],
+  ['Friction plate (limit)', '3.0 (2.6) mm'],
+  ['Plain plate warpage', '0.2 mm max'],
+  ['Spring free length (limit)', '37.8 (34.7) mm'],
+  ['Clutch free play, lever end', '10–20 mm'],
+  ['Chain play, lower run', 'about 20 mm'],
+].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+$('#gpNote').textContent = 'Ratios, tooth counts, the 19-tooth crank gear and the clutch figures are from the workshop manual; the 69-tooth driven gear is calculated from the 3.632 : 1 primary ratio, and which pinions slide is worked out from the manual\'s assembly photos. Shift pattern from the owner. Sizes inside the cases are estimated and the plate lift is drawn larger than real. Slow motion: everything turns at 1/60 of real speed; the rpm figures are real. Road speed uses the 292 mm tyre radius, so it is approximate.';
+
+function gbStartHold(e) { if (e) e.preventDefault(); gb.holding = true; gpHold.classList.add('down'); gb.target = CLUTCH.travelMax; }
+function gbEndHold() { if (!gb.holding) return; gb.holding = false; gpHold.classList.remove('down'); gb.target = 0; }
+gpHold.addEventListener('pointerdown', (e) => { gbStartHold(e); try { gpHold.setPointerCapture(e.pointerId); } catch (err) { /* capture is optional */ } });
+['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => gpHold.addEventListener(ev, gbEndHold));
+gpHold.addEventListener('keydown', (e) => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) gbStartHold(e); });
+gpHold.addEventListener('keyup', (e) => { if (e.key === ' ' || e.key === 'Enter') gbEndHold(); });
+gpHold.addEventListener('contextmenu', (e) => e.preventDefault());
+gpLever.addEventListener('input', () => { gbEndHold(); gb.t = gb.target = +gpLever.value; });
+gpRpm.addEventListener('input', () => { gb.rpm = +gpRpm.value; });
+gpAdj.addEventListener('input', () => { gb.slack = CLUTCH.slackMax - +gpAdj.value; });
+gpPlate.addEventListener('input', () => { gb.plate = +gpPlate.value; });
+
+// 1 down, 3 up: press from neutral for 1st; lift for 2nd, 3rd, 4th. Neutral is half a step between 1st and 2nd.
+function shift(kind) {
+  const cur = gearLabel(gb.drumTarget);
+  if (!cur) return;
+  const next = kind === 'down' ? { N: '1', 1: '1', 2: '1', 3: '2', 4: '3' }[cur]
+    : kind === 'up' ? { N: '2', 1: '2', 2: '3', 3: '4', 4: '4' }[cur]
+      : cur === '1' || cur === '2' ? 'N' : cur;
+  gb.pedalDir = kind === 'down' ? -1 : kind === 'up' ? 1 : cur === '1' ? 0.5 : -0.5;
+  gb.pedalPhase = 0;
+  if (next !== cur) {
+    gb.warn = clutchCouple() > 0.5 && (engagedGear(gb.drumDeg) || next !== 'N') ? 4 : 0;
+    gb.drumTarget = DRUM_POS[next];
+  }
+}
+$('#gpDown').addEventListener('click', () => shift('down'));
+$('#gpUp').addEventListener('click', () => shift('up'));
+$('#gpNeutral').addEventListener('click', () => shift('neutral'));
+document.querySelectorAll('[data-gview]').forEach((b) => b.addEventListener('click', () => { setViewButtons(''); flyTo(gearPose(b.dataset.gview)); }));
+$('#gpInside').addEventListener('click', (e) => { gb.inside = !gb.inside; e.currentTarget.setAttribute('aria-pressed', String(gb.inside)); applyGhosts(); });
+$('#gpCollapse').addEventListener('click', (e) => {
+  const open = e.currentTarget.getAttribute('aria-expanded') === 'true';
+  e.currentTarget.setAttribute('aria-expanded', String(!open)); e.currentTarget.textContent = open ? 'Show' : 'Hide';
+  $('#gpBody').hidden = open;
+  updateViewShift();
+});
+function gearPose(which) {
+  const m = Math.max(1, (which === 'chain' ? 1.15 : 0.9) / effAspect());
+  let target, off;
+  if (which === 'clutch') { target = V(MAINSHAFT.x, MAINSHAFT.y, 0.13); off = V(-0.12, 0.2, 0.42); }
+  else if (which === 'chain') { target = V(0.25, 0.31, -0.112); off = V(0.0, 0.1, -1.25); }
+  else { target = V((MAINSHAFT.x + LAYSHAFT.x) / 2, 0.32, 0.01); off = V(-0.26, 0.42, -0.2); }
+  return { pos: target.clone().addScaledVector(off, m), target };
+}
+
+/* the drive line, as rates of turn about +z (rad/s); forward motion makes the crank and wheel rates negative */
+function gbSim(dt) {
+  if (gb.t !== gb.target) { const s = 140 * dt; gb.t = gb.t < gb.target ? Math.min(gb.target, gb.t + s) : Math.max(gb.target, gb.t - s); }
+  if (gb.drumDeg !== gb.drumTarget) { const s = 260 * dt, d = gb.drumTarget - gb.drumDeg; gb.drumDeg = Math.abs(d) <= s ? gb.drumTarget : gb.drumDeg + Math.sign(d) * s; }
+  if (gb.pedalPhase < 1) gb.pedalPhase = Math.min(1, gb.pedalPhase + dt / 0.45);
+  gb.pedalAng = gb.pedalDir * 14 * Math.sin(Math.PI * gb.pedalPhase);
+  gb.warn = Math.max(0, gb.warn - dt);
+  const gear = engagedGear(gb.drumDeg), c = clutchCouple(), coast = Math.exp(-dt / 2.5);
+  const crank = -gb.rpm * RPM2RAD, outer = -crank * TEETH.primary[0] / TEETH.primary[1];
+  let { main, lay } = gb;
+  const drive = (m) => (c >= 0.999 ? outer : c > 0 ? m + (outer - m) * Math.min(1, dt * 8 * c) : m * coast);
+  if (gear) { main = drive(main); lay = -main * TEETH.main[gear - 1] / TEETH.lay[gear - 1]; }
+  else { main = drive(main); lay *= coast; }
+  Object.assign(gb, { main, lay });
+  stepGearbox(dt, { crank, outer, main, lay });
+  RB.spin -= lay * FRONT_R / REAR_R * dt;               // the brake code turns the rear wheel by -spin
+  return { gear, c };
+}
+function updateGearbox(dt) {
+  if (stage !== 'gearbox') return;
+  const { c } = gbSim(dt);
+  poseGearbox({ drumDeg: gb.drumDeg, lift: clutchLift(), pedal: gb.pedalAng, plate: gb.plate, power: c > 0.5 });
+  poseFinalDrive(GB.rho.lay, -RB.spin);
+  poseEngine(wrapDeg(-GB.rho.crank / DEG, 720), { gas: false });
+  CONTROLS.clutchLever.group.rotation.y = gb.t / 1000 / CONTROLS.clutchLever.reach;
+  CONTROLS.gearPedal.group.rotation.z = gb.pedalAng * DEG;
+  setNeutralLamp(gearLabel(gb.drumDeg) === 'N');
+  if (+gpLever.value !== gb.t) gpLever.value = gb.t;
+  gbReadouts();
+}
+function gbReadouts() {
+  const gear = engagedGear(gb.drumDeg), c = clutchCouple(), lab = gearLabel(gb.drumDeg);
+  const realRpm = (rate) => Math.abs(rate) / RPM2RAD;
+  $('#gpGear').textContent = lab ?? '·';
+  chip($('#chNeutral'), lab === 'N' ? 'ok' : 'idle', lab === 'N' ? 'N lamp on' : 'N lamp off');
+  $('#gpRpmOut').textContent = `${gb.rpm.toLocaleString('en-US')} rpm`;
+  $('#gpLeverOut').textContent = `${gb.t.toFixed(0)} mm`;
+  if (c >= 0.999) { chip($('#chClutch'), 'ok', 'Engaged'); $('#rdClutch').textContent = 'plates clamped'; }
+  else if (c > 0) { chip($('#chClutch'), 'warn', 'Slipping'); $('#rdClutch').textContent = 'starting to free'; }
+  else { chip($('#chClutch'), 'on', 'Free'); $('#rdClutch').textContent = 'plates apart'; }
+  $('#rdRatio').textContent = gear ? `${RATIOS.gears[gear - 1].toFixed(3)} : 1` : lab === 'N' ? 'Neutral' : 'Shifting';
+  $('#rdRatioSub').textContent = gear ? `overall ${OVERALL(gear).toFixed(1)} : 1` : 'no gear in mesh';
+  const wheelRpm = realRpm(gb.lay) * FRONT_R / REAR_R;
+  $('#rdWheel').textContent = `${Math.round(wheelRpm)} rpm`;
+  $('#rdWheelSub').textContent = `≈ ${kmhAt(wheelRpm).toFixed(0)} km/h`;
+  $('#rdShafts').textContent = `${Math.round(realRpm(gb.main))} / ${Math.round(realRpm(gb.lay))} rpm`;
+  const w = $('#gpWarn'); w.hidden = gb.warn <= 0;
+  w.textContent = 'Pull the clutch before shifting: shifting under load hammers the dogs, and worn dogs make the gearbox jump out of gear.';
+  const reach = gear && c > 0 ? 7 : c > 0 ? 4 : 2;
+  document.querySelectorAll('#gpSteps li').forEach((li, i) => { li.className = i < reach - 1 ? 'done' : i === reach - 1 ? 'active' : ''; });
+  // workshop checks
+  $('#gpAdjOut').textContent = `${gb.slack.toFixed(0)} mm`;
+  if (gb.slack < CLUTCH.spec[0]) chip($('#chFree'), 'bad', 'Too little: may slip');
+  else if (gb.slack > CLUTCH.spec[1]) chip($('#chFree'), 'warn', 'Too much: may drag');
+  else chip($('#chFree'), 'ok', `In spec ${CLUTCH.spec[0]}–${CLUTCH.spec[1]}`);
+  $('#gpFree').textContent = `Free play at the lever end: ${gb.slack.toFixed(0)} mm. Too little and the clutch may slip; too much and it may not free fully, so gears crunch and the bike creeps with the lever pulled.`;
+  $('#gpPlateOut').textContent = `${gb.plate.toFixed(2)} mm`;
+  if (gb.plate > PLATE.limit + 0.04) chip($('#chPlate'), 'ok', 'Plates OK');
+  else if (gb.plate >= PLATE.limit - 0.04) chip($('#chPlate'), 'warn', 'At the limit');
+  else chip($('#chPlate'), 'bad', 'Below the limit');
+  $('#gpPlateTxt').textContent = gb.plate > PLATE.limit + 0.04
+    ? 'Measure each friction plate across its faces with a vernier: 3.0 mm new.'
+    : 'Renew the friction plates as a set: worn plates let the clutch slip under load, so the engine revs rise but the bike does not speed up. On the centre stand there is no load, so it may not show here.';
+}
+$('#gpGear').textContent = 'N';
+gpRpm.value = gb.rpm; gpAdj.value = CLUTCH.slackMax - gb.slack; gpPlate.value = gb.plate;
+
 PARTS.forEach((p) => setVisible(p.id, p.visible)); showSystems();
 
 /* =====================================================================
@@ -648,6 +811,7 @@ PARTS.forEach((p) => setVisible(p.id, p.visible)); showSystems();
 let first = true, camFrozen = false, lastT = performance.now();
 function frame(now) {
   const dt = Math.min(0.25, Math.max(0, (now - lastT) / 1000)); lastT = now;
+  updateGearbox(dt);
   updateBrakes(dt);
   updateEngine(dt);
   if (tween) {
@@ -676,6 +840,19 @@ window.viewer = {
   engine: (deg, play = false, follow) => { if (follow != null) setFollow(follow); eng.target = null; eng.deg = deg; setPlaying(play); poseEngine(deg); updateEngineReadouts(); },
   engineView: (w) => { const p = enginePose(w); tween = null; camera.position.copy(p.pos); controls.target.copy(p.target); controls.update(); },
   cycle: cycleState,
+  // gear: '1' 'N' '2' '3' '4'; settle runs the drive line until speeds are steady
+  gearbox: ({ gear, rpm, lever, slack, plate, settle = true } = {}) => {
+    if (gear != null) gb.drumDeg = gb.drumTarget = DRUM_POS[gear];
+    if (rpm != null) { gb.rpm = rpm; gpRpm.value = rpm; }
+    if (lever != null) { gbEndHold(); gb.t = gb.target = lever; }
+    if (slack != null) { gb.slack = slack; gpAdj.value = CLUTCH.slackMax - slack; }
+    if (plate != null) { gb.plate = plate; gpPlate.value = plate; }
+    if (settle) for (let i = 0; i < 80; i++) gbSim(0.05);
+    updateGearbox(0);
+    return { gear: engagedGear(gb.drumDeg), label: gearLabel(gb.drumDeg), mainRpm: Math.abs(gb.main) / RPM2RAD, layRpm: Math.abs(gb.lay) / RPM2RAD, clutch: clutchCouple() };
+  },
+  gearView: (w) => { const p = gearPose(w); tween = null; camera.position.copy(p.pos); controls.target.copy(p.target); controls.update(); },
+  shift,
   // used for lining the model up with reference photos
   photoCam: (pos, target, up, fov) => { camFrozen = true; scene.fog = null; tween = null; camera.position.set(...pos); camera.up.set(...up); camera.fov = fov; camera.updateProjectionMatrix(); camera.lookAt(...target); },
 };
