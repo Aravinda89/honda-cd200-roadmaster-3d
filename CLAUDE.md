@@ -5,8 +5,8 @@ so that mechanics can learn how each part works. It runs as a static web page on
 (free hosting is a requirement) and is a portfolio pet project. Parts should match the real bike:
 the owner can supply photos, measurements and pages from the workshop manual.
 
-Stages 1 (outer body), 2 (working drum brakes) and 3 (engine internals and the four-stroke cycle)
-are done. Stage 4 (clutch, gearbox, final drive) is next. See "Stage plan" below.
+Stages 1 (outer body), 2 (working drum brakes), 3 (engine internals and the four-stroke cycle) and
+4 (clutch, gearbox, final drive) are done. Stage 5 (electrical) is next. See "Stage plan" below.
 
 ## Running it
 
@@ -37,12 +37,13 @@ css/styles.css          all styles; colour tokens for light and dark at the top
 js/core.js              units, key geometry, materials, mesh helpers, part registry
 js/parts/body.js        tank, seats, rack, side covers, chain case, mudguards, engine guard, plates
 js/parts/chassis.js     frame, fork, swingarm, rear shocks, stands, footrests
-js/parts/wheels.js      wheels and final drive
+js/parts/wheels.js      wheels, final drive chain and rear sprocket (poseFinalDrive)
 js/parts/engine.js      engine exterior; exports the cylinder frame (cylWorld)
 js/parts/internals.js   stage 3: crankshaft, con rods, pistons, cam chain, camshaft, rockers, valves, plugs; poseEngine, cycleState
+js/parts/gearbox.js     stage 4: primary gears, clutch, gearbox shafts and pinions, selector, front sprocket; stepGearbox, poseGearbox
 js/parts/exhaust.js     headers and silencers
 js/parts/lights.js      headlamp, speedometer, indicators, tail light, horns
-js/parts/controls.js    handlebar, clutch lever, mirrors, gear/kick pedals, cables
+js/parts/controls.js    handlebar, clutch lever and cable, mirrors, gear/kick pedals, cables (CONTROLS for posing)
 js/parts/brakes.js      stage 2: drums, back plates, shoes, springs, cams, lever, cable, pedal, rod, stop switch
 js/app.js               renderer, camera views, dimensions, explode, parts list, picking, brake and engine modes, loop
 tools/check.mjs         smoke test + screenshots
@@ -55,6 +56,8 @@ reference/              NOT in git: workshop manual PDF and the owner's photos (
 `js/app.js` imports every part module in build order. Order matters: `brakes.js` adds its stop-lamp
 glow to the tail light from `lights.js`, and `exhaust.js` uses the cylinder geometry from `engine.js`.
 `internals.js` builds in the same cylinder frame (from `CYL_BASE` / `CYL_TILT` in core.js).
+`gearbox.js` comes after `internals.js`, and `controls.js` imports the clutch arm and gearchange
+shaft positions from it.
 
 ## Conventions
 
@@ -62,7 +65,8 @@ glow to the tail light from `lights.js`, and `exhaust.js` uses the cylinder geom
 with the chain case and front brake, is negative z). Origin: rear axle at x = 0 on the ground plane
 centre line. Key values live at the top of `core.js`: `R` (tyre radius), `RIM`, `WB` (1.28 m),
 `RA`/`FA` (rear and front axle), `RAKE` (25°), `FD`/`FF` (up the fork / square to it), `forkPt(t, fwd, z)`
-(a point `t` metres up the fork axis from the front axle), `CYL_BASE`/`CYL_TILT` (cylinder base, 8° forward lean).
+(a point `t` metres up the fork axis from the front axle), `CYL_BASE`/`CYL_TILT` (cylinder base, 8° forward lean),
+`CRANK`, `MAINSHAFT`, `LAYSHAFT` (shaft axes in x, y; est) with `PRIMARY_C` / `GEAR_C` (centre distances).
 
 **Parts.** Every clickable part is registered with
 `addPart(id, system, name, basis, description, explodeVector)` and returns a group to build into.
@@ -82,18 +86,28 @@ centre line. Key values live at the top of `core.js`: `R` (tyre radius), `RIM`, 
 **Helpers** in core.js: `rod`, `tube` (Catmull-Rom tube through points), `lathe` (profile turned
 around an axis), `rbox` (rounded box), `extrude`, `superLoft` + `loftGeometry` (smooth bodies such as
 the tank and seats, defined by side-profile functions), `surfPatch` (a patch laid on a loft surface:
-knee pads, badges), `fenderGeometry`, `hullOfCircles`, `arcPts`.
+knee pads, badges), `fenderGeometry`, `hullOfCircles`, `arcPts`, `gearShape` (spur gear or sprocket
+outline), `beltPath` + `chainLinks` (a chain round two sprockets as one InstancedMesh; the cam chain and
+the final drive chain use them).
 
-**Modes.** `app.js` has a stage switch (`setStage('body' | 'brakes' | 'engine')`). In a tool stage,
-parts outside the stage's focus set are faded with `setGhost` (`BRAKE_FOCUS` / `BRAKE_CONTEXT`,
-`ENGINE_FOCUS` / `ENGINE_SHELL` / `ENGINE_CONTEXT`), the stage's panel drives the pose functions every
-frame (`poseBrake` / `poseLinkages`, `poseEngine`), and the camera's projection is shifted
-(`viewShift`) so the model stays clear of the panel. Systems listed in `STAGE_ONLY` (the engine
-internals) are hidden outside their stage, in the scene and in the parts list. Follow the same
-pattern for new stages: a focus set, a panel, and pose functions exported from the stage's part module.
+**Rotation convention.** Going forward, the crankshaft and the wheels turn clockwise seen from the
+right, so their rotation about +z falls. The gearbox code calls a part's rotation about +z its
+"rho" and moves everything by rates of rho.
+
+**Modes.** `app.js` has a stage switch (`setStage('body' | 'brakes' | 'engine' | 'gearbox')`). In a
+tool stage, parts outside the stage's focus set are faded with `setGhost` (`BRAKE_FOCUS` /
+`BRAKE_CONTEXT`, `ENGINE_FOCUS` / `ENGINE_SHELL` / `ENGINE_CONTEXT`, `GEAR_FOCUS` / `GEAR_SHELL` /
+`GEAR_CONTEXT`), the stage's panel drives the pose functions every frame (`poseBrake` / `poseLinkages`,
+`poseEngine`, `stepGearbox` / `poseGearbox` / `poseFinalDrive`), and the camera's projection is
+shifted (`viewShift`) so the model stays clear of the panel. Systems listed in `STAGE_ONLY` (engine
+internals, clutch and gearbox) are hidden outside the stages they list, in the scene and in the parts
+list. The gearbox stage turns the rear wheel through the brake code's `RB.spin`, so wheel, drum and
+chain stay together. Follow the same pattern for new stages: a focus set, a panel, and pose functions
+exported from the stage's part module.
 
 **Test hooks.** `window.viewer` (bottom of app.js) exposes `view`, `select`, `explode`, `dims`,
-`stage`, `brake`, `brakeView`, `engine(deg, play, follow)`, `engineView`, `cycle` and `photoCam`. `tools/check.mjs` and `tools/photo-measure/overlay.mjs`
+`stage`, `brake`, `brakeView`, `engine(deg, play, follow)`, `engineView`, `cycle`,
+`gearbox({ gear, rpm, lever, slack, plate, settle })`, `gearView`, `shift` and `photoCam`. `tools/check.mjs` and `tools/photo-measure/overlay.mjs`
 depend on them; extend them for new stages rather than reaching into internals from tests.
 
 **Design.** Colours are CSS custom properties defined for light and dark at the top of
@@ -159,8 +173,20 @@ are fine and should be credited to the manual.
   angles, valve lift, cam base circle). The cam lobes are generated from the same lift function that
   moves the valves, and the rocker angle is solved exactly, so cam, rocker and valve stay in contact.
   The valve clearance is drawn 30 times real size (`GAP_VIS` in internals.js).
+- **Gearbox** (stage 4): the CD200 column gives primary 3.632, gears 2.846 / 1.778 / 1.273 / 1.000,
+  final 2.333. The tooth counts (mainshaft 13/18/22/22, layshaft 37/32/28/22) come from the manual's
+  assembly photos 33.4a–m and reproduce those ratios exactly. The same photos show which pinions are
+  free and which slide (mainshaft 4th selects 2nd/3rd, layshaft 3rd selects 1st/4th); pair order along
+  the shafts is 2-4-3-1. The crank gear is 19T (manual); the 69T driven gear is calculated. The
+  kinematics use tooth counts, so meshing gears never drift.
+- **Shift pattern 1-N-2-3-4 and gear pedal on the left**, confirmed by the owner. Neutral is half a
+  drum step between 1st and 2nd.
+- **Clutch cable goes to the right-hand cover** (the manual's adjustment text). The right-hand cover was
+  moved to sit over the clutch and primary gears; it has not been checked against a right-side photo.
+- **Final drive sprockets** are drawn 15T and 35T (gives 2.333:1); the manual gives only the ratio.
 - Parts still marked `est`: swingarm, chain and sprockets, gear and kick-start pedals, control cables,
-  all engine internals.
+  all engine internals, final drive sprocket. Gearbox parts are `manual` for ratios, teeth and layout,
+  but their sizes and positions inside the cases are estimated.
 - Known visual mismatches against photo set2-03: the handlebar and mirrors sit a few cm higher in
   the model than in the photo; check with `tools/photo-measure/overlay.mjs` before changing.
 
@@ -171,8 +197,8 @@ are fine and should be credited to the manual.
 | 1 | Outer body, click to identify, explode, dimensions | specs p.7 | done |
 | 2 | Drum brakes: operate, free play adjustment, lining wear check, fault finder | 10–11 (adjustment), 115–128 | done |
 | 3 | Engine internals: crankshaft, pistons (bore 53 mm, stroke 44 mm), camshaft and cam chain, valves; four-stroke cycle animation; valve clearance check; engine fault finder | chapter 1, 23–75; routine maintenance 13–14 | done |
-| 4 | Clutch, 4-speed constant-mesh gearbox and final drive: pull the clutch, shift gears, follow the power to the rear wheel | chapter 1 (clutch/gearbox sections), 11 (chain) | next |
-| 5 | Electrical: battery to lights, horn, ignition; switch interaction | chapter 6, 129–144; wiring diagrams 142–144; ignition chapter 3, 90–96 | |
+| 4 | Clutch, 4-speed constant-mesh gearbox and final drive: pull the clutch, shift gears, follow the power to the rear wheel; clutch free play and plate wear checks; fault finder | specs 25; clutch 34, 45, 59; gearbox 47–49; maintenance 11–12, 16; faults 74–75 | done |
+| 5 | Electrical: battery to lights, horn, ignition; switch interaction | chapter 6, 129–144; wiring diagrams 142–144; ignition chapter 3, 90–96 | next |
 | 6 | Portfolio polish: intro screen, README write-up, screenshots | — | |
 
 Fuel system and lubrication (chapter 2, pages 76–89) were left out of stage 3 and can become their
@@ -185,4 +211,5 @@ own stage.
 - Square-on close-ups of the front hub (left side) and rear hub (right side): arm, cable / rod end,
   adjuster, torque arm, wear indicator. The close-up set3 has no straight hub shots.
 - Straight-on photos of the right side and the rear.
-- Right side of the engine with the covers on (the close-up set has the left side only).
+- Right side of the engine with the covers on (the close-up set has the left side only): needed to
+  check the right-hand cover, the clutch operating arm and the clutch cable routing.

@@ -50,6 +50,22 @@ Use the CD200T column wherever the manual gives figures per model.
   full advance 32–35° BTDC at 2,800 rpm (200 models); plugs CR7HS / U22FSR-L (UK), C7HS / U22FS (US),
   gap 0.6–0.7 mm.
 - Engine fault diagnosis: PDF p.73–74 (printed 72–73).
+- Gearbox (specs p.25, CD200 column): 4-speed constant mesh; primary reduction 3.632 : 1; gears 1st
+  2.846, 2nd 1.778, 3rd 1.273, 4th 1.000 : 1; final reduction 2.333 : 1 ("all others"). Selector fork
+  end 5.00–5.07 mm (limit 4.70); fork bore 12.000–12.018 mm (limit 12.05); fork shaft 11.976–11.994 mm
+  (limit 11.96).
+- Gear tooth counts (assembly photos 33.4a–m, p.47–49): mainshaft 1st 13T (part of the shaft), 2nd
+  18T, 3rd 22T, 4th 22T; layshaft 1st 37T, 2nd 32T, 3rd 28T, 4th 22T. Primary drive gear 19T on the
+  200 (p.46). Gearbox parts drawing fig 1.7 (p.49).
+- Clutch (specs p.25): wet multiplate, 5 friction plates, 4 plain, 4 springs; friction plate 3.0 mm
+  (limit 2.6); plain plate warpage 0.2 mm; spring free length 37.8 mm (limit 34.7) on the 200.
+  Dismantling p.34 (thrust plate, springs, centre, plates, pressure plate); examination p.45; drawing
+  fig 1.11 p.59. Release: cam on a vertical spindle in the right-hand cover, pushrod.
+- Clutch adjustment (routine maintenance p.16): free play 10–20 mm at the lever end; main adjuster at
+  the operating arm on the right-hand crankcase cover, fine adjuster at the lever.
+- Final drive chain (p.11–12): about 20 mm play on the enclosed CD chain; sleeve nut 6.0–7.0 kgf m,
+  spindle nut 4.0–5.0 kgf m.
+- Clutch and gearbox fault diagnosis: PDF p.74–75 (printed 73–74).
 - Torques: swinging arm pivot bolt 4.0–5.0 kgf m; wheel spindle nuts 4.0–5.0 kgf m.
 - Electrical: the maintenance section describes a 6 V 12 Ah lead-acid battery. Check this against the
   owner's bike and the wiring diagram before stage 5; some CD200 variants are 12 V.
