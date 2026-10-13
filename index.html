@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Interactive 1:1 3D model of a Honda CD200 Roadmaster, system by system, for mechanics to learn from.">
 <title>Honda CD200 Roadmaster Viewer</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Honda CD200 Roadmaster in 3D">
+<meta property="og:description" content="An interactive 1:1 model of a real CD200: brakes, engine, gearbox and electrics you can operate, with the workshop manual's figures.">
+<meta property="og:image" content="https://aravinda89.github.io/honda-cd200-roadmaster-3d/docs/screenshots/body.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#16709f">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Saira+Condensed:wght@500;600;700&display=swap">
@@ -22,7 +28,7 @@
     <header>
       <p class="eyebrow" id="eyebrow">Stage 1 · Outer body</p>
       <h1>Honda CD200 Roadmaster</h1>
-      <p class="lede">A 1:1 scale model of the bike, built from the workshop manual and measurements taken from the owner's photos. Click any part on the bike, or in this list, to identify it. Switch to Brakes to see the drum brakes work, or to Engine to watch the four-stroke cycle inside the engine.</p>
+      <p class="lede">A 1:1 scale model of the bike, built from the workshop manual and measurements taken from the owner's photos. Click any part on the bike, or in this list, to identify it. The stages above the bike show how each system works: brakes, engine, clutch and gearbox, and electrics.</p>
     </header>
 
     <section class="specs" aria-labelledby="specsTitle">
@@ -148,6 +154,7 @@
         <button type="button" class="tool" id="tDims" aria-pressed="false"><span class="dot"></span>Dimensions</button>
         <button type="button" class="tool" id="tSpin" aria-pressed="false"><span class="dot"></span>Spin</button>
         <button type="button" class="tool" id="tReset">Reset</button>
+        <button type="button" class="tool" id="tAbout" aria-controls="intro">About</button>
         <button type="button" class="tool" id="panelToggle" aria-expanded="false" aria-controls="panel">Parts</button>
       </div>
     </div>
@@ -397,6 +404,24 @@
 
     <div id="tip" hidden></div>
     <div id="loading"><p id="loadingText">Building the bike…</p></div>
+
+    <div id="intro" hidden role="dialog" aria-modal="true" aria-labelledby="introTitle">
+      <div class="intro-card">
+        <p class="eyebrow">Interactive workshop model</p>
+        <h2 id="introTitle">Honda CD200 Roadmaster</h2>
+        <p class="intro-lede">A full-size 3D model of one real CD200, built part by part from the Haynes workshop manual and photos of the bike, so you can see how each system works and what to check.</p>
+        <ol class="intro-stages">
+          <li><button type="button" data-go="body"><b>Outer body</b><span>Click any part to name it, explode the bike, check the dimensions.</span></button></li>
+          <li><button type="button" data-go="brakes"><b>Drum brakes</b><span>Squeeze the lever, set the free play, wear the linings to the limit.</span></button></li>
+          <li><button type="button" data-go="engine"><b>Engine</b><span>Watch the four-stroke cycle; set the valve clearances at TDC.</span></button></li>
+          <li><button type="button" data-go="gearbox"><b>Clutch and gearbox</b><span>Pull the clutch, shift 1-N-2-3-4, follow the power to the wheel.</span></button></li>
+          <li><button type="button" data-go="electrical"><b>Electrical</b><span>Turn the key, work the switches, follow the current; start the engine.</span></button></li>
+        </ol>
+        <p class="intro-key"><span class="basis" data-basis="manual">Manual</span> <span class="basis" data-basis="photo">Photo</span> <span class="basis" data-basis="est">Estimate</span> Every part says where its size came from.</p>
+        <button type="button" class="hold intro-go" id="introClose">Explore the bike</button>
+        <p class="intro-small">Drag to orbit, scroll or pinch to zoom. Figures from the Haynes Owners Workshop Manual no. 572; not affiliated with Honda.</p>
+      </div>
+    </div>
   </main>
 </div>
 

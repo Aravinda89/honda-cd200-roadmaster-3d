@@ -5,9 +5,10 @@ so that mechanics can learn how each part works. It runs as a static web page on
 (free hosting is a requirement) and is a portfolio pet project. Parts should match the real bike:
 the owner can supply photos, measurements and pages from the workshop manual.
 
-Stages 1 (outer body), 2 (working drum brakes), 3 (engine internals and the four-stroke cycle),
-4 (clutch, gearbox, final drive) and 5 (electrical) are done. Stage 6 (portfolio polish) is next.
-See "Stage plan" below.
+All six stages in the plan are done: 1 (outer body), 2 (working drum brakes), 3 (engine internals
+and the four-stroke cycle), 4 (clutch, gearbox, final drive), 5 (electrical) and 6 (intro screen,
+README, screenshots). Further work is accuracy against the owner's bike (see "Open questions") and
+the optional fuel and lubrication stage. See "Stage plan" below.
 
 ## Running it
 
@@ -21,7 +22,11 @@ npm run check        # loads the page headless, fails on any script error, saves
 `npm run check -- --shots=f_on,r_worn --size=390x844 --dark` runs a subset at phone size in dark
 mode. `npm run check -- --details` adds close-ups (`d_tank`, `d_speedo`, …) for comparing details
 with the owner's photos. Shots are defined at the top of `tools/check.mjs`. Screenshots land in `tools/out/` (ignored
-by git). Headless rendering is software-only and slow (2–4 frames a second): that is expected.
+by git). Headless rendering is software-only and slow (2–4 frames a second): that is expected. The
+full run is now about 10 minutes; split it with `--shots` when a tool limits command time.
+`npm run check -- --readme` regenerates the committed README and social-preview images in
+`docs/screenshots/` (JPEG, 1280×800); rerun it after visible changes. The check loads the page with
+`?nointro` so the first-visit intro screen stays out of the shots (`--intro` keeps it).
 
 There is no build step. `index.html` loads `js/app.js` as an ES module; three.js 0.160.0 comes from
 the jsDelivr CDN through the import map in `index.html`. Keep the version in the import map and
@@ -51,7 +56,7 @@ js/app.js               renderer, camera views, dimensions, explode, parts list,
 tools/check.mjs         smoke test + screenshots
 tools/serve.mjs         local server
 tools/photo-measure/    measure part positions from side photos (see its README)
-docs/                   measurements, manual page map
+docs/                   measurements, manual page map; screenshots/ for the README (renders of the model only)
 reference/              NOT in git: workshop manual PDF and the owner's photos (see below)
 ```
 
@@ -114,7 +119,7 @@ stage's part module.
 `stage`, `brake`, `brakeView`, `engine(deg, play, follow)`, `engineView`, `cycle`,
 `gearbox({ gear, rpm, lever, slack, plate, settle })`, `gearView`, `shift`,
 `electrical({ key, lights, beam, turn, horn, fbrake, rbrake, start, fuse, flat, engine, run })`,
-`elecView` and `photoCam`. `tools/check.mjs` and `tools/photo-measure/overlay.mjs`
+`elecView`, `intro(on)` and `photoCam`. `tools/check.mjs` and `tools/photo-measure/overlay.mjs`
 depend on them; extend them for new stages rather than reaching into internals from tests.
 
 **Design.** Colours are CSS custom properties defined for light and dark at the top of
@@ -215,7 +220,7 @@ are fine and should be credited to the manual.
 | 3 | Engine internals: crankshaft, pistons (bore 53 mm, stroke 44 mm), camshaft and cam chain, valves; four-stroke cycle animation; valve clearance check; engine fault finder | chapter 1, 23–75; routine maintenance 13–14 | done |
 | 4 | Clutch, 4-speed constant-mesh gearbox and final drive: pull the clutch, shift gears, follow the power to the rear wheel; clutch free play and plate wear checks; fault finder | specs 25; clutch 34, 45, 59; gearbox 47–49; maintenance 11–12, 16; faults 74–75 | done |
 | 5 | Electrical: key, lights, dip, turn, horn, stop, starter; live circuits drawn on the wiring; ignition and charging with the engine running; fuse and flat-battery faults; fault finder | chapter 6, 129–144; wiring diagram 144; ignition chapter 3, 90–96 | done |
-| 6 | Portfolio polish: intro screen, README write-up, screenshots | — | next |
+| 6 | Portfolio polish: first-visit intro screen (About button reopens it; remembered in localStorage), README write-up, screenshots, social preview tags | — | done |
 
 Fuel system and lubrication (chapter 2, pages 76–89) were left out of stage 3 and can become their
 own stage.

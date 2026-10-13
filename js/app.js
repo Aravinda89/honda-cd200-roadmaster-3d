@@ -944,6 +944,31 @@ PARTS.forEach((p) => setVisible(p.id, p.visible)); showSystems();
 syncElecButtons();
 
 /* =====================================================================
+   Stage 6: intro screen (first visit, and the About button)
+   ===================================================================== */
+const introEl = $('#intro'), INTRO_KEY = 'cd200.introSeen';
+let introReturn = null;
+function openIntro(from) {
+  introReturn = from || null;                 // where focus goes back to on close
+  introEl.hidden = false; $('#introClose').focus();
+}
+function closeIntro() {
+  introEl.hidden = true;
+  try { localStorage.setItem(INTRO_KEY, '1'); } catch (err) { /* storage may be blocked */ }
+  if (introReturn) introReturn.focus(); else if (introEl.contains(document.activeElement)) document.activeElement.blur();
+}
+$('#introClose').addEventListener('click', closeIntro);
+$('#tAbout').addEventListener('click', (e) => openIntro(e.currentTarget));
+introEl.addEventListener('click', (e) => { if (e.target === introEl) closeIntro(); });
+introEl.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeIntro(); } });
+document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => { closeIntro(); setStage(b.dataset.go); }));
+{
+  let seen = false;
+  try { seen = localStorage.getItem(INTRO_KEY) === '1'; } catch (err) { /* storage may be blocked */ }
+  if (!seen && !new URLSearchParams(location.search).has('nointro')) openIntro();
+}
+
+/* =====================================================================
    Loop
    ===================================================================== */
 let first = true, camFrozen = false, lastT = performance.now();
@@ -1001,6 +1026,7 @@ window.viewer = {
     updateElectrical(0);
     return { engine: el.engine, live: CIRCUITS.filter((c) => el.out.live[c.id]).map((c) => c.id), segs: [...el.out.segs] };
   },
+  intro: (on) => { if (on && introEl.hidden) openIntro(); else if (!on && !introEl.hidden) closeIntro(); },
   elecView: (w) => { const p = elecPose(w); tween = null; camera.position.copy(p.pos); controls.target.copy(p.target); controls.update(); },
   // used for lining the model up with reference photos
   photoCam: (pos, target, up, fov) => { camFrozen = true; scene.fog = null; tween = null; camera.position.set(...pos); camera.up.set(...up); camera.fov = fov; camera.updateProjectionMatrix(); camera.lookAt(...target); },

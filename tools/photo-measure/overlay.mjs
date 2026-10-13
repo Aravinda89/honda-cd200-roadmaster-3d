@@ -35,8 +35,8 @@ const localThree = path.join(ROOT, 'node_modules', 'three');
 if (fs.existsSync(localThree)) {
   await page.route(/cdn\.jsdelivr\.net\/npm\/three@[^/]+\//, (r) => r.fulfill({ status: 200, contentType: 'text/javascript', body: fs.readFileSync(path.join(localThree, r.request().url().replace(/^.*\/npm\/three@[^/]+\//, ''))) }));
 }
-await page.goto(base);
-await page.addStyleTag({ content: '#panel,.topbar,.bottombar,#info,#tip,#brakePanel{display:none!important}#app{grid-template-columns:1fr!important}' });
+await page.goto(`${base}?nointro`);
+await page.addStyleTag({ content: '#panel,.topbar,.bottombar,#info,#tip,#intro,.bpanel{display:none!important}#app{grid-template-columns:1fr!important}' });
 await page.waitForFunction(() => window.viewer && document.querySelector('#loading').hidden, null, { timeout: 120000 });
 await page.evaluate((c) => window.viewer.photoCam(c.pos, c.target, c.up, c.fov), cam);
 await page.waitForTimeout(1500);

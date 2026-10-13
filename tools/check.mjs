@@ -3,6 +3,7 @@
 //   npm run check                 load the page, fail on any script error, save the standard screenshots
 //   npm run check -- --shots=f_on,r_worn --size=390x844 --dark
 //   npm run check -- --details     also saves the d_* close-ups used to compare details with photos
+//   npm run check -- --readme      saves the README images to docs/screenshots (add --dark for dark ones)
 //
 // Serves the project folder on a local port, opens it in headless Chromium (Playwright) and drives
 // the page through window.viewer (defined at the bottom of js/app.js). Screenshots go to tools/out/.
@@ -15,10 +16,12 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const OUT = path.join(ROOT, 'tools', 'out');
 const arg = (k, d) => { const a = process.argv.find((x) => x.startsWith(`--${k}=`)); return a ? a.slice(k.length + 3) : d; };
 const flag = (k) => process.argv.includes(`--${k}`);
-const [W, H] = arg('size', '1400x860').split('x').map(Number);
+// --readme saves the README / social preview images to docs/screenshots (JPEG, committed)
+const README = { intro: 'intro', body: 'body_34', brakes: 'r_on', engine: 'e_crank', gearbox: 'g_first', electrical: 'x_lights' };
+const OUT = flag('readme') ? path.join(ROOT, 'docs', 'screenshots') : path.join(ROOT, 'tools', 'out');
+const [W, H] = arg('size', flag('readme') ? '1280x800' : '1400x860').split('x').map(Number);
 
 // Each shot: a camera / mode setup applied through window.viewer, then a screenshot.
 const SHOTS = {
@@ -35,6 +38,7 @@ const SHOTS = {
   r_worn: { stage: 'brakes', brake: 'r', t: 75, lining: 1.8, bview: 'hub' },
   brakes_34: { stage: 'brakes', brake: 'r', t: 75, view: 'three' },
   // engine: deg is the crank angle, 0 = left cylinder TDC on compression
+  intro: { view: 'three', intro: true },
   e_intake: { stage: 'engine', engine: { deg: 450 }, eview: 'cyl' },
   e_power: { stage: 'engine', engine: { deg: 20 }, eview: 'cyl' },
   e_head: { stage: 'engine', engine: { deg: 460 }, eview: 'head' },
@@ -66,8 +70,9 @@ const SHOTS = {
   d_gap: { stage: 'engine', engine: { deg: 0 }, cam: [[0.652, 0.606, -0.26], [0.652, 0.606, -0.061], 9] },   // left inlet rocker at TDC compression
 };
 const detail = Object.keys(SHOTS).filter((k) => SHOTS[k].cam);
-const wanted = arg('shots', Object.keys(SHOTS).filter((k) => flag('details') || !SHOTS[k].cam).join(','))
+const wanted = flag('readme') ? Object.values(README) : arg('shots', Object.keys(SHOTS).filter((k) => flag('details') || !SHOTS[k].cam).join(','))
   .split(',').filter(Boolean).sort((a, b) => detail.includes(a) - detail.includes(b));
+const readmeName = Object.fromEntries(Object.entries(README).map(([k, v]) => [v, k]));
 
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml' };
 const server = http.createServer((req, res) => {
@@ -95,7 +100,7 @@ if (fs.existsSync(localThree)) {
 }
 if (flag('offline-fonts')) await page.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
 
-await page.goto(url);
+await page.goto(flag('intro') ? url : `${url}?nointro`);   // --intro keeps the first-visit intro screen up
 try {
   await page.waitForFunction(() => window.viewer && document.querySelector('#loading').hidden, null, { timeout: 120000 });
 } catch {
@@ -124,10 +129,13 @@ if (info) {
       v.explode(s.explode || 0);
       if (s.dims) v.dims();
       if (s.cam) v.photoCam(s.cam[0], s.cam[1], [0, 1, 0], s.cam[2]);
+      v.intro(!!s.intro);
     }, s);
     await page.waitForTimeout(1500);   // software rendering is slow; give the animations time to settle
-    const file = path.join(OUT, `${name}${flag('dark') ? '_dark' : ''}${W !== 1400 ? `_${W}` : ''}.png`);
-    await page.screenshot({ path: file, timeout: 120000 });
+    const file = flag('readme')
+      ? path.join(OUT, `${readmeName[name]}${flag('dark') ? '_dark' : ''}.jpg`)
+      : path.join(OUT, `${name}${flag('dark') ? '_dark' : ''}${W !== 1400 ? `_${W}` : ''}.png`);
+    await page.screenshot({ path: file, timeout: 120000, ...(flag('readme') ? { type: 'jpeg', quality: 82 } : {}) });
     if (s.dims) await page.evaluate(() => window.viewer.dims());
     console.log(`  saved ${path.relative(ROOT, file)}`);
   }
