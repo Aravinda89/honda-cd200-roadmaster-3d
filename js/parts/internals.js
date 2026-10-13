@@ -10,7 +10,7 @@
 // cylinder to TDC on compression, and one coil and contact breaker fire both plugs together.
 // Valve timing: CM200T column (the CD200T column is blank). Everything else is sized by estimate.
 import * as THREE from 'three';
-import { CYL_BASE, CYL_TILT, DEG, MAT, V, Y_UP, addPart, extrude, hullOfCircles, lathe, mesh, rbox, rod } from '../core.js';
+import { CYL_BASE, CYL_TILT, DEG, MAT, V, Y_UP, addPart, beltPath, chainLinks, extrude, gearShape, hullOfCircles, lathe, mesh, rbox, rod } from '../core.js';
 
 /* ---------- dimensions (metres, cylinder frame) ---------- */
 const CR = 0.044 / 2;                 // crank throw: half the 44 mm stroke (manual)
@@ -51,14 +51,6 @@ const cyclePhi = (deg, c) => wrap(deg + c.off, 720);
 
 /* ---------- frame helper ---------- */
 function frame(g) { const f = new THREE.Group(); f.position.copy(CYL_BASE); f.rotation.z = -CYL_TILT; g.add(f); return f; }
-function gearShape(r, n, h) {
-  const s = new THREE.Shape(), m = n * 8;
-  for (let i = 0; i <= m; i++) {
-    const a = 2 * Math.PI * i / m, rr = r + h * (Math.cos(n * a) > 0.2 ? 1 : 0);
-    if (i) s.lineTo(rr * Math.cos(a), rr * Math.sin(a)); else s.moveTo(rr, 0);
-  }
-  return s;
-}
 const noPick = (m) => { m.raycast = () => {}; return m; };
 
 const E = { cyl: [], valves: [] };
@@ -116,43 +108,13 @@ const GAS = {
 }
 
 /* ---------- cam chain ---------- */
-const chainPath = (() => {
-  // open loop round the crank sprocket (C1) and the cam sprocket (C2); the chain runs clockwise seen from the right
-  const C1 = V(0, CRANK_Y), C2 = V(0, CAM_Y), D = CAM_Y - CRANK_Y;
-  const gam = Math.asin((R1 - R2) / D), straight = Math.sqrt(D * D - (R2 - R1) ** 2);
-  const segs = [
-    { kind: 'arc', c: C1, r: R1, a0: gam, a1: -Math.PI - gam },
-    { kind: 'line', p0: C1.clone().add(V(Math.cos(Math.PI - gam), Math.sin(Math.PI - gam)).multiplyScalar(R1)), p1: C2.clone().add(V(Math.cos(Math.PI - gam), Math.sin(Math.PI - gam)).multiplyScalar(R2)) },
-    { kind: 'arc', c: C2, r: R2, a0: Math.PI - gam, a1: gam },
-    { kind: 'line', p0: C2.clone().add(V(Math.cos(gam), Math.sin(gam)).multiplyScalar(R2)), p1: C1.clone().add(V(Math.cos(gam), Math.sin(gam)).multiplyScalar(R1)) },
-  ];
-  segs.forEach((s) => { s.len = s.kind === 'arc' ? Math.abs(s.a1 - s.a0) * s.r : straight; });
-  const total = segs.reduce((a, s) => a + s.len, 0);
-  return {
-    total, rear: segs[1],
-    at(sv) {
-      let d = wrap(sv, total);
-      for (const s of segs) {
-        if (d <= s.len) {
-          const t = d / s.len;
-          if (s.kind === 'line') return { p: s.p0.clone().lerp(s.p1, t), ang: Math.atan2(s.p1.y - s.p0.y, s.p1.x - s.p0.x) };
-          const a = s.a0 + (s.a1 - s.a0) * t;
-          return { p: s.c.clone().add(V(Math.cos(a) * s.r, Math.sin(a) * s.r)), ang: a - Math.PI / 2 };
-        }
-        d -= s.len;
-      }
-      return { p: segs[0].c.clone(), ang: 0 };
-    },
-  };
-})();
+// open loop round the crank sprocket and the cam sprocket
+const chainPath = beltPath(V(0, CRANK_Y), R1, V(0, CAM_Y), R2);
 {
   const g = addPart('camchain', 'internals', 'Cam chain and tensioner', 'est', 'Endless duplex roller chain from the crankshaft sprocket up a tunnel between the cylinders to the camshaft sprocket. The camshaft sprocket has twice as many teeth, so the camshaft turns once for every two turns of the crankshaft. The tensioner sets itself: with the T mark lined up, slacken the tensioner locknut at the rear of the cylinder block, then tighten it again. A stretched chain or worn sprockets rattle.');
   const f = frame(g);
-  const n = Math.round(chainPath.total / 0.00635), pitch = chainPath.total / n;
-  const links = new THREE.InstancedMesh(new THREE.BoxGeometry(pitch * 0.92, 0.0036, 0.011), MAT.chain(), n);
-  links.castShadow = false; f.add(links);
-  E.chain = { links, n, pitch };
-  const r = chainPath.rear, d = r.p1.clone().sub(r.p0), nrm = V(-d.y, d.x).normalize();
+  E.chain = chainLinks(chainPath, 0.00635, MAT.chain(), f);
+  const r = chainPath.segs[1], d = r.p1.clone().sub(r.p0), nrm = V(-d.y, d.x).normalize();
   if (nrm.x > 0) nrm.negate();
   const mid = r.p0.clone().lerp(r.p1, 0.55).addScaledVector(nrm, 0.0045);
   rbox(0.004, d.length() * 0.55, 0.014, 0.0015, MAT.black(), f, mid).rotation.z = Math.atan2(-d.x, d.y);
@@ -271,7 +233,6 @@ function helix(r, wire, turns, len) {
    Pose and cycle state
    ===================================================================== */
 const sparkAt = (deg) => { const d = Math.abs(wrap(deg - (360 - SPARK_BTDC) + 180, 360) - 180); return Math.max(0, 1 - d / 8); };
-const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = V(1, 1, 1), _z = V(0, 0, 1);
 
 /** State of each cylinder at a crankshaft angle (degrees, 0 = left cylinder TDC on compression). */
 function cycleState(deg) {
@@ -316,13 +277,11 @@ function poseEngine(deg) {
     v.valve.position.set(v.S.x, v.S.y, v.z).addScaledVector(v.u, -lift);
     v.spring.scale.y = (SPRING_LEN - lift) / SPRING_LEN;
   });
-  const { links, n, pitch } = E.chain, off = th * R1;
-  for (let i = 0; i < n; i++) {
-    const { p, ang } = chainPath.at(i * pitch + off);
-    _q.setFromAxisAngle(_z, ang); _m.compose(p.setZ(0), _q, _s); links.setMatrixAt(i, _m);
-  }
-  links.instanceMatrix.needsUpdate = true;
+  E.chain.update(th * R1);
 }
 poseEngine(0);
 
-export { GAP_VIS, SPARK_BTDC, STROKES, VALVE_EVENTS, cycleState, poseEngine };
+// crankshaft axis in world coordinates (x, y); the gearbox lines up with it
+const CRANK_AXIS = CYL_BASE.clone().add(V(Math.sin(CYL_TILT), Math.cos(CYL_TILT)).multiplyScalar(CRANK_Y));
+
+export { CRANK_AXIS, GAP_VIS, SPARK_BTDC, STROKES, VALVE_EVENTS, cycleState, poseEngine };

@@ -281,6 +281,62 @@ function fenderGeometry({ rIn, rOut, width, phi0, phi1, p = 3, nPhi = 90, nS = 1
   g.setIndex(idx); g.computeVertexNormals();
   return g;
 }
+/* Spur gear or sprocket outline: n square teeth of height h on a circle of radius r. */
+function gearShape(r, n, h) {
+  const s = new THREE.Shape(), m = n * 8;
+  for (let i = 0; i <= m; i++) {
+    const a = 2 * Math.PI * i / m, rr = r + h * (Math.cos(n * a) > 0.2 ? 1 : 0);
+    if (i) s.lineTo(rr * Math.cos(a), rr * Math.sin(a)); else s.moveTo(rr, 0);
+  }
+  return s;
+}
+/* Path of a chain round two sprockets (centres c1, c2 in the xy plane, pitch radii r1, r2).
+   at(s) runs clockwise seen from the right (+z), the way the crankshaft and the wheels turn going
+   forward, and returns the point and the direction of travel. */
+function beltPath(c1, r1, c2, r2) {
+  const d = c2.clone().sub(c1), L = d.length(), phi = Math.atan2(d.y, d.x), beta = Math.acos((r1 - r2) / L);
+  const on = (c, r, a) => c.clone().add(V(Math.cos(a) * r, Math.sin(a) * r));
+  const segs = [
+    { kind: 'arc', c: c1, r: r1, a0: phi - beta, a1: phi + beta - 2 * Math.PI },
+    { kind: 'line', p0: on(c1, r1, phi + beta), p1: on(c2, r2, phi + beta) },
+    { kind: 'arc', c: c2, r: r2, a0: phi + beta, a1: phi - beta },
+    { kind: 'line', p0: on(c2, r2, phi - beta), p1: on(c1, r1, phi - beta) },
+  ];
+  segs.forEach((s) => { s.len = s.kind === 'arc' ? Math.abs(s.a1 - s.a0) * s.r : s.p0.distanceTo(s.p1); });
+  const total = segs.reduce((a, s) => a + s.len, 0);
+  return {
+    total, segs,
+    at(sv) {
+      let dd = ((sv % total) + total) % total;
+      for (const s of segs) {
+        if (dd <= s.len) {
+          const t = dd / s.len;
+          if (s.kind === 'line') return { p: s.p0.clone().lerp(s.p1, t), ang: Math.atan2(s.p1.y - s.p0.y, s.p1.x - s.p0.x) };
+          const a = s.a0 + (s.a1 - s.a0) * t;
+          return { p: on(s.c, s.r, a), ang: a - Math.PI / 2 };
+        }
+        dd -= s.len;
+      }
+      return { p: on(c1, r1, phi - beta), ang: 0 };
+    },
+  };
+}
+/* Roller chain on a beltPath as one InstancedMesh. update(offset) moves the links offset metres along the path. */
+function chainLinks(path, pitch, mat, parent, { thick = 0.0036, width = 0.011, z = 0 } = {}) {
+  const n = Math.round(path.total / pitch), p = path.total / n;
+  const links = new THREE.InstancedMesh(new THREE.BoxGeometry(p * 0.92, thick, width), mat, n);
+  links.castShadow = false; parent.add(links);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), one = V(1, 1, 1), zAxis = V(0, 0, 1);
+  const update = (off) => {
+    for (let i = 0; i < n; i++) {
+      const { p: pt, ang } = path.at(i * p + off);
+      q.setFromAxisAngle(zAxis, ang); m.compose(pt.setZ(z), q, one); links.setMatrixAt(i, m);
+    }
+    links.instanceMatrix.needsUpdate = true;
+  };
+  update(0);
+  return { links, n, update };
+}
 const arcPts = (r, a0, a1, z, n = 40) => Array.from({ length: n + 1 }, (_, i) => { const a = a0 + (a1 - a0) * i / n, rr = typeof r === 'function' ? r(a) : r; return V(rr * Math.cos(a), rr * Math.sin(a), z); });
 const smooth = (x) => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); };
 
@@ -311,4 +367,4 @@ function addPart(id, sys, name, basis, desc, explode = [0, 0, 0]) {
 function setExplode(obj, v) { obj.userData.explode = toV(v); obj.userData.home = obj.position.clone(); }
 function sideGroup(parent, explode) { const g = new THREE.Group(); parent.add(g); setExplode(g, explode); return g; }
 
-export { $, BASIS, CYL_BASE, CYL_TILT, DEG, FA, FD, MAT, PARTS, R, RA, RIM, SYSTEMS, TEX, V, WB, Y_UP, addPart, arcPts, bike, byId, extrude, fenderGeometry, forkPt, hullOfCircles, lathe, loftGeometry, mesh, qAlong, rbox, rod, roundRectShape, sideGroup, smooth, superLoft, surfPatch, tube };
+export { $, BASIS, CYL_BASE, CYL_TILT, DEG, FA, FD, MAT, PARTS, R, RA, RIM, SYSTEMS, TEX, V, WB, Y_UP, addPart, arcPts, beltPath, bike, byId, chainLinks, extrude, fenderGeometry, forkPt, gearShape, hullOfCircles, lathe, loftGeometry, mesh, qAlong, rbox, rod, roundRectShape, sideGroup, smooth, superLoft, surfPatch, tube };
