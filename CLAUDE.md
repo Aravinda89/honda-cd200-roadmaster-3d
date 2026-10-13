@@ -5,8 +5,9 @@ so that mechanics can learn how each part works. It runs as a static web page on
 (free hosting is a requirement) and is a portfolio pet project. Parts should match the real bike:
 the owner can supply photos, measurements and pages from the workshop manual.
 
-Stages 1 (outer body), 2 (working drum brakes), 3 (engine internals and the four-stroke cycle) and
-4 (clutch, gearbox, final drive) are done. Stage 5 (electrical) is next. See "Stage plan" below.
+Stages 1 (outer body), 2 (working drum brakes), 3 (engine internals and the four-stroke cycle),
+4 (clutch, gearbox, final drive) and 5 (electrical) are done. Stage 6 (portfolio polish) is next.
+See "Stage plan" below.
 
 ## Running it
 
@@ -41,8 +42,9 @@ js/parts/wheels.js      wheels, final drive chain and rear sprocket (poseFinalDr
 js/parts/engine.js      engine exterior; exports the cylinder frame (cylWorld)
 js/parts/internals.js   stage 3: crankshaft, con rods, pistons, cam chain, camshaft, rockers, valves, plugs; poseEngine, cycleState
 js/parts/gearbox.js     stage 4: primary gears, clutch, gearbox shafts and pinions, selector, front sprocket; stepGearbox, poseGearbox
+js/parts/electrical.js  stage 5: battery, fuse, regulator, starter and solenoid, alternator, coil, contact breaker, switches, wiring; evalCircuits, poseElectrical
 js/parts/exhaust.js     headers and silencers
-js/parts/lights.js      headlamp, speedometer, indicators, tail light, horns
+js/parts/lights.js      headlamp, speedometer, indicators, tail light, horns; lamp glows (poseLamps) and dial lamps (setDialLamps)
 js/parts/controls.js    handlebar, clutch lever and cable, mirrors, gear/kick pedals, cables (CONTROLS for posing)
 js/parts/brakes.js      stage 2: drums, back plates, shoes, springs, cams, lever, cable, pedal, rod, stop switch
 js/app.js               renderer, camera views, dimensions, explode, parts list, picking, brake and engine modes, loop
@@ -94,20 +96,25 @@ the final drive chain use them).
 right, so their rotation about +z falls. The gearbox code calls a part's rotation about +z its
 "rho" and moves everything by rates of rho.
 
-**Modes.** `app.js` has a stage switch (`setStage('body' | 'brakes' | 'engine' | 'gearbox')`). In a
-tool stage, parts outside the stage's focus set are faded with `setGhost` (`BRAKE_FOCUS` /
-`BRAKE_CONTEXT`, `ENGINE_FOCUS` / `ENGINE_SHELL` / `ENGINE_CONTEXT`, `GEAR_FOCUS` / `GEAR_SHELL` /
-`GEAR_CONTEXT`), the stage's panel drives the pose functions every frame (`poseBrake` / `poseLinkages`,
-`poseEngine`, `stepGearbox` / `poseGearbox` / `poseFinalDrive`), and the camera's projection is
+**Modes.** `app.js` has a stage switch (`setStage('body' | 'brakes' | 'engine' | 'gearbox' |
+'electrical')`). In a tool stage, parts outside the stage's focus set are faded with `setGhost`
+(`*_FOCUS` / `*_SHELL` / `*_CONTEXT` per stage), the stage's panel drives the pose functions every
+frame (`poseBrake` / `poseLinkages`, `poseEngine`, `stepGearbox` / `poseGearbox` / `poseFinalDrive`,
+`evalCircuits` / `poseElectrical` / `poseLamps` / `setDialLamps`), and the camera's projection is
 shifted (`viewShift`) so the model stays clear of the panel. Systems listed in `STAGE_ONLY` (engine
-internals, clutch and gearbox) are hidden outside the stages they list, in the scene and in the parts
-list. The gearbox stage turns the rear wheel through the brake code's `RB.spin`, so wheel, drum and
-chain stay together. Follow the same pattern for new stages: a focus set, a panel, and pose functions
-exported from the stage's part module.
+internals, clutch and gearbox, electrical) are hidden outside the stages they list, in the scene and
+in the parts list. Shared state between stages: the gearbox stage turns the rear wheel through the
+brake code's `RB.spin`; the stop lamp glow (`TAIL_GLOW`) takes the larger of the brake stage's switch
+and the electrical stage's stop circuit; the speedometer's lamps go through `setDialLamps`. Lamp glows
+are additive meshes with `noGhost` materials, so ghosting and hover highlighting leave them alone.
+Follow the same pattern for new stages: a focus set, a panel, and pose functions exported from the
+stage's part module.
 
 **Test hooks.** `window.viewer` (bottom of app.js) exposes `view`, `select`, `explode`, `dims`,
 `stage`, `brake`, `brakeView`, `engine(deg, play, follow)`, `engineView`, `cycle`,
-`gearbox({ gear, rpm, lever, slack, plate, settle })`, `gearView`, `shift` and `photoCam`. `tools/check.mjs` and `tools/photo-measure/overlay.mjs`
+`gearbox({ gear, rpm, lever, slack, plate, settle })`, `gearView`, `shift`,
+`electrical({ key, lights, beam, turn, horn, fbrake, rbrake, start, fuse, flat, engine, run })`,
+`elecView` and `photoCam`. `tools/check.mjs` and `tools/photo-measure/overlay.mjs`
 depend on them; extend them for new stages rather than reaching into internals from tests.
 
 **Design.** Colours are CSS custom properties defined for light and dark at the top of
@@ -184,6 +191,15 @@ are fine and should be credited to the manual.
 - **Clutch cable goes to the right-hand cover** (the manual's adjustment text). The right-hand cover was
   moved to sit over the clutch and primary gears; it has not been checked against a right-side photo.
 - **Final drive sprockets** are drawn 15T and 35T (gives 2.333:1); the manual gives only the ratio.
+- **Electrical system is 12 V on the owner's bike**; the manual's models are 6 V (Yuasa 6N12A-2C).
+  The circuit layout, the 20 A fuse, the ignition figures and component locations follow the manual;
+  its bulb wattages and charging voltages are shown only labelled "manual (6 V models)". The bike has
+  the electric starter and the kick-start (owner). Left switch block contents are from the owner's
+  photos; the right block (starter button, lighting switch) is from the manual.
+- **Wiring** is drawn as one tube per wire run in `SEG_DEF` (electrical.js), shared between circuits,
+  so a run lights when any circuit using it is live. The scanned wiring diagram is too small to read
+  the wire colours, so none are shown. Indicator flash rate (about 85 a minute) and the 1.5 s of
+  cranking before the engine fires are for display only, not from the manual.
 - Parts still marked `est`: swingarm, chain and sprockets, gear and kick-start pedals, control cables,
   all engine internals, final drive sprocket. Gearbox parts are `manual` for ratios, teeth and layout,
   but their sizes and positions inside the cases are estimated.
@@ -198,8 +214,8 @@ are fine and should be credited to the manual.
 | 2 | Drum brakes: operate, free play adjustment, lining wear check, fault finder | 10–11 (adjustment), 115–128 | done |
 | 3 | Engine internals: crankshaft, pistons (bore 53 mm, stroke 44 mm), camshaft and cam chain, valves; four-stroke cycle animation; valve clearance check; engine fault finder | chapter 1, 23–75; routine maintenance 13–14 | done |
 | 4 | Clutch, 4-speed constant-mesh gearbox and final drive: pull the clutch, shift gears, follow the power to the rear wheel; clutch free play and plate wear checks; fault finder | specs 25; clutch 34, 45, 59; gearbox 47–49; maintenance 11–12, 16; faults 74–75 | done |
-| 5 | Electrical: battery to lights, horn, ignition; switch interaction | chapter 6, 129–144; wiring diagrams 142–144; ignition chapter 3, 90–96 | next |
-| 6 | Portfolio polish: intro screen, README write-up, screenshots | — | |
+| 5 | Electrical: key, lights, dip, turn, horn, stop, starter; live circuits drawn on the wiring; ignition and charging with the engine running; fuse and flat-battery faults; fault finder | chapter 6, 129–144; wiring diagram 144; ignition chapter 3, 90–96 | done |
+| 6 | Portfolio polish: intro screen, README write-up, screenshots | — | next |
 
 Fuel system and lubrication (chapter 2, pages 76–89) were left out of stage 3 and can become their
 own stage.
@@ -213,3 +229,6 @@ own stage.
 - Straight-on photos of the right side and the rear.
 - Right side of the engine with the covers on (the close-up set has the left side only): needed to
   check the right-hand cover, the clutch operating arm and the clutch cable routing.
+- The right handlebar switch block (starter button, lighting switch), and the battery, regulator and
+  starter switch behind the right side panel: close-ups would let stage 5 follow the bike, not the
+  manual's 6 V models.

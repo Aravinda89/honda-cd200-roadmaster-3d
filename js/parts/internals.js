@@ -248,8 +248,8 @@ function cycleState(deg) {
   });
 }
 
-/** Pose the engine at a crank angle. gas: false hides the charge colours and spark glow (outside the engine stage). */
-function poseEngine(deg, { gas = true } = {}) {
+/** Pose the engine at a crank angle. gas: false hides the charge colours; spark (default = gas) shows the plug glow. */
+function poseEngine(deg, { gas = true, spark: showSpark = gas } = {}) {
   const th = deg * DEG;
   E.crankG.rotation.z = -th;
   const pinX = CR * Math.sin(th), pinY = CRANK_Y + CR * Math.cos(th);
@@ -267,7 +267,7 @@ function poseEngine(deg, { gas = true } = {}) {
     else if (phi < 540) { const t = (phi - 360) / 180; col = GAS.Intake; op = 0.14 + 0.2 * t; }
     else { const t = (phi - 540) / 165; col = GAS.Intake.clone().lerp(GAS.Compression, t); op = 0.34 + 0.16 * t; }
     c.gasMat.color.copy(col); c.gasMat.opacity = op;
-    c.glowMat.opacity = gas ? spark * 0.95 : 0;
+    c.glowMat.opacity = showSpark ? spark * 0.95 : 0;
     c.gas.visible = gas;
   });
   const camDeg = deg / 2;

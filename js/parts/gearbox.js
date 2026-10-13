@@ -308,4 +308,6 @@ function poseGearbox({ drumDeg = GB.drumDeg, lift = GB.lift, pedal = GB.pedal, p
 }
 poseGearbox();
 
-export { CLUTCH_ARM, CHANGE_SHAFT, DRUM_POS, GB, LIFT_MAX, RATIOS, SEQ, SPROCKET_R, TEETH, engagedGear, gearRates, poseGearbox, stepGearbox };
+const NEUTRAL_SWITCH = V(DRUM.x, DRUM.y, -0.084);   // on the left end of the selector drum (used by electrical.js)
+
+export { CLUTCH_ARM, CHANGE_SHAFT, NEUTRAL_SWITCH, DRUM_POS, GB, LIFT_MAX, RATIOS, SEQ, SPROCKET_R, TEETH, engagedGear, gearRates, poseGearbox, stepGearbox };

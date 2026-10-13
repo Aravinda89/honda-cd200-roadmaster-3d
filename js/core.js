@@ -66,13 +66,17 @@ const TEX = {
     for (let x = 0; x < w; x += 9) { g.fillStyle = 'rgba(255,255,255,0.45)'; g.fillRect(x, 0, 3, h); g.fillStyle = 'rgba(60,75,85,0.2)'; g.fillRect(x + 4, 0, 2, h); }
     for (let y = 0; y < h; y += 28) { g.fillStyle = 'rgba(60,75,85,0.14)'; g.fillRect(0, y, w, 1); }
   }),
-  dial: dialTexture(false),
-  dialN: dialTexture(true),
 };
 // instrument face as on the owner's bike (photo set3-20): 0–160 km/h dial with a green gear-range
 // band and odometer on the left, TURN / NEUTRAL / HIGH BEAM lamps in a column on the right.
-// neutralOn draws the green neutral lamp lit.
-function dialTexture(neutralOn) {
+// One texture per combination of lit lamps, made when first needed.
+const DIAL_CACHE = new Map();
+function dialFace({ turn = false, neutral = false, high = false } = {}) {
+  const key = `${+turn}${+neutral}${+high}`;
+  if (!DIAL_CACHE.has(key)) DIAL_CACHE.set(key, dialTexture({ turn, neutral, high }));
+  return DIAL_CACHE.get(key);
+}
+function dialTexture(lit) {
   return canvasTexture(512, 330, (g, w, h) => {
     g.fillStyle = '#0b0d0e'; g.fillRect(0, 0, w, h);
     const cx = 188, cy = 168, r = 152, ang = (v) => (232 - 1.675 * v) * DEG;
@@ -97,10 +101,10 @@ function dialTexture(neutralOn) {
     g.beginPath(); g.moveTo(...at(180, 0.12)); g.lineTo(...at(0, 0.8)); g.stroke();
     g.fillStyle = '#e9dfb8'; g.beginPath(); g.arc(cx, cy, 15, 0, Math.PI * 2); g.fill();
     g.strokeStyle = '#eceee6'; g.lineWidth = 3; g.strokeRect(384, 22, 112, 286);
-    [['TURN', '#5d5c34'], ['NEUTRAL', neutralOn ? '#5dffa8' : '#1d6b45'], ['HIGH BEAM', '#1f3a7a']].forEach(([t, c], i) => {
+    [['TURN', lit.turn, '#5d5c34', '#ffc93a'], ['NEUTRAL', lit.neutral, '#1d6b45', '#5dffa8'], ['HIGH BEAM', lit.high, '#1f3a7a', '#5b9bff']].forEach(([t, on, off, onC], i) => {
       const y = 36 + i * 92;
-      if (t === 'NEUTRAL' && neutralOn) { g.shadowColor = '#5dffa8'; g.shadowBlur = 24; }
-      g.fillStyle = c; g.fillRect(408, y, 64, 44);
+      if (on) { g.shadowColor = onC; g.shadowBlur = 24; }
+      g.fillStyle = on ? onC : off; g.fillRect(408, y, 64, 44);
       g.shadowBlur = 0;
       g.fillStyle = '#eceee6'; g.font = '700 15px Arial, sans-serif'; g.fillText(t, 440, y + 62);
     });
@@ -371,6 +375,7 @@ const SYSTEMS = [
   { id: 'engine', name: 'Engine (outside)' },
   { id: 'internals', name: 'Engine internals' },
   { id: 'transmission', name: 'Clutch and gearbox' },
+  { id: 'electrical', name: 'Electrical' },
   { id: 'exhaust', name: 'Exhaust' },
   { id: 'lights', name: 'Lights & instruments' },
   { id: 'controls', name: 'Controls' },
@@ -388,4 +393,4 @@ function addPart(id, sys, name, basis, desc, explode = [0, 0, 0]) {
 function setExplode(obj, v) { obj.userData.explode = toV(v); obj.userData.home = obj.position.clone(); }
 function sideGroup(parent, explode) { const g = new THREE.Group(); parent.add(g); setExplode(g, explode); return g; }
 
-export { $, BASIS, CRANK, CYL_BASE, CYL_TILT, DEG, GEAR_C, LAYSHAFT, MAINSHAFT, PRIMARY_C, FA, FD, MAT, PARTS, R, RA, RIM, SYSTEMS, TEX, V, WB, Y_UP, addPart, arcPts, beltPath, bike, byId, chainLinks, extrude, fenderGeometry, forkPt, gearShape, hullOfCircles, lathe, loftGeometry, mesh, qAlong, rbox, rod, roundRectShape, sideGroup, smooth, superLoft, surfPatch, tube };
+export { $, BASIS, CRANK, CYL_BASE, CYL_TILT, DEG, GEAR_C, canvasTexture, dialFace, LAYSHAFT, MAINSHAFT, PRIMARY_C, FA, FD, MAT, PARTS, R, RA, RIM, SYSTEMS, TEX, V, WB, Y_UP, addPart, arcPts, beltPath, bike, byId, chainLinks, extrude, fenderGeometry, forkPt, gearShape, hullOfCircles, lathe, loftGeometry, mesh, qAlong, rbox, rod, roundRectShape, sideGroup, smooth, superLoft, surfPatch, tube };

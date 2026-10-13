@@ -12,8 +12,9 @@ import { cylWorld } from './parts/engine.js';
 import { GAP_VIS, SPARK_BTDC, VALVE_EVENTS, cycleState, poseEngine } from './parts/internals.js';
 import { DRUM_POS, GB, LIFT_MAX, RATIOS, SEQ, TEETH, engagedGear, poseGearbox, stepGearbox } from './parts/gearbox.js';
 import './parts/exhaust.js';
-import { setNeutralLamp } from './parts/lights.js';
+import { poseLamps, setDialLamps, setNeutralLamp } from './parts/lights.js';
 import { CONTROLS } from './parts/controls.js';
+import { BY_ID, CIRCUITS, evalCircuits, poseElectrical } from './parts/electrical.js';
 import { BRAKES, FB, LINING_LIMIT, RB, TAIL_GLOW, poseBrake, poseLinkages, setLining } from './parts/brakes.js';
 
 /* =====================================================================
@@ -176,7 +177,7 @@ explodeInput.addEventListener('input', () => { explodeTarget = explodeInput.valu
 const eyeSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g class="open"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></g><g class="shut"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7a10 10 0 0 0 5.4-1.6"/></g></svg>';
 let stage = 'body';
 // systems that sit inside other parts and only show in the stages listed
-const STAGE_ONLY = { internals: ['engine', 'gearbox'], transmission: ['gearbox'] };
+const STAGE_ONLY = { internals: ['engine', 'gearbox', 'electrical'], transmission: ['gearbox'], electrical: ['electrical'] };
 const inSys = (sys) => !STAGE_ONLY[sys] || STAGE_ONLY[sys].includes(stage);
 const inStage = (p) => inSys(p.sys);
 function showSystems() { SYSTEMS.forEach((s) => { $(`#sys-${s.id}`).hidden = !inSys(s.id); }); }
@@ -354,8 +355,11 @@ const ENGINE_CONTEXT = { headers: 0.12, frame: 0.06, fwheel: 0.05, rwheel: 0.05 
 const GEAR_FOCUS = new Set(PARTS.filter((p) => p.sys === 'transmission').map((p) => p.id).concat(['drive', 'rwheel', 'levers', 'ccable', 'pedals']));
 const GEAR_SHELL = ['crankcase', 'chaincase'];                   // see-through when "See inside" is on
 const GEAR_CONTEXT = { crank: 0.3, pistons: 0.14, conrods: 0.14, camchain: 0.1, camshaft: 0.08, rockers: 0.08, valves: 0.08, plugs: 0.08, cylinders: 0.06, bars: 0.35, speedo: 0.5, frame: 0.06, swingarm: 0.1 };
+const ELEC_FOCUS = new Set(PARTS.filter((p) => p.sys === 'electrical').map((p) => p.id).concat(['headlamp', 'tail', 'findic', 'rindic', 'horn', 'speedo', 'plugs', 'stopsw']));
+const ELEC_SHELL = ['sidecovers', 'crankcase', 'tank'];           // see-through when "See inside" is on
+const ELEC_CONTEXT = { bars: 0.4, flever: 0.4, levers: 0.4, frame: 0.16, fwheel: 0.08, rwheel: 0.08, cylinders: 0.1, chaincase: 0.1, seat: 0.12, fork: 0.12 };
 const NO_FOCUS = new Set();
-const stageFocus = () => ({ brakes: BRAKE_FOCUS, engine: ENGINE_FOCUS, gearbox: GEAR_FOCUS }[stage] || NO_FOCUS);
+const stageFocus = () => ({ brakes: BRAKE_FOCUS, engine: ENGINE_FOCUS, gearbox: GEAR_FOCUS, electrical: ELEC_FOCUS }[stage] || NO_FOCUS);
 const bstate = { f: { t: 0, target: 0 }, r: { t: 0, target: 0 } };
 let brakeKey = 'f', seeInside = true, holding = false;
 const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -386,6 +390,8 @@ function applyGhosts() {
       op = ENGINE_SHELL.includes(p.id) ? (eng.inside ? 0.13 : null) : ENGINE_CONTEXT[p.id] ?? 0.04;
     } else if (stage === 'gearbox' && !GEAR_FOCUS.has(p.id)) {
       op = GEAR_SHELL.includes(p.id) ? (gb.inside ? 0.12 : null) : GEAR_CONTEXT[p.id] ?? 0.04;
+    } else if (stage === 'electrical' && !ELEC_FOCUS.has(p.id)) {
+      op = ELEC_SHELL.includes(p.id) ? (el.inside ? 0.12 : null) : ELEC_CONTEXT[p.id] ?? 0.05;
     }
     setGhost(p, op);
   });
@@ -467,18 +473,18 @@ function setBrake(key, fly = true) {
   if (fly) { setViewButtons(''); flyTo(brakePose(key, 'hub')); }
 }
 function updateViewShift() {
-  const el = { brakes: panelEl, engine: enginePanelEl, gearbox: gearPanelEl }[stage];
+  const pe = { brakes: panelEl, engine: enginePanelEl, gearbox: gearPanelEl, electrical: elecPanelEl }[stage];
   let x = 0, y = 0;
-  if (el && !el.hidden) {
-    const r = el.getBoundingClientRect(), v = viewport.getBoundingClientRect();
+  if (pe && !pe.hidden) {
+    const r = pe.getBoundingClientRect(), v = viewport.getBoundingClientRect();
     if (v.width > 760) x = Math.round((r.right - v.left) / 2);
     else y = -Math.round((v.bottom - r.top) / 2);
   }
   if (x !== viewShift.x || y !== viewShift.y) { viewShift = { x, y }; resize(); }
 }
-const enginePanelEl = $('#enginePanel'), gearPanelEl = $('#gearPanel');
-[panelEl, enginePanelEl, gearPanelEl].forEach((el) => new ResizeObserver(() => updateViewShift()).observe(el));
-const EYEBROW = { body: 'Stage 1 · Outer body', brakes: 'Stage 2 · Brakes', engine: 'Stage 3 · Engine', gearbox: 'Stage 4 · Clutch and gearbox' };
+const enginePanelEl = $('#enginePanel'), gearPanelEl = $('#gearPanel'), elecPanelEl = $('#elecPanel');
+[panelEl, enginePanelEl, gearPanelEl, elecPanelEl].forEach((p) => new ResizeObserver(() => updateViewShift()).observe(p));
+const EYEBROW = { body: 'Stage 1 · Outer body', brakes: 'Stage 2 · Brakes', engine: 'Stage 3 · Engine', gearbox: 'Stage 4 · Clutch and gearbox', electrical: 'Stage 5 · Electrical' };
 function setStage(next) {
   if (stage === next) return;
   stage = next;
@@ -486,8 +492,8 @@ function setStage(next) {
   document.querySelectorAll('[data-stage]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.stage === stage)));
   $('#stage').classList.toggle('panel-mode', !body);
   $('#eyebrow').textContent = EYEBROW[stage];
-  panelEl.hidden = stage !== 'brakes'; enginePanelEl.hidden = stage !== 'engine'; gearPanelEl.hidden = stage !== 'gearbox';
-  $('#faults').hidden = stage !== 'brakes'; $('#engineFaults').hidden = stage !== 'engine'; $('#gearFaults').hidden = stage !== 'gearbox';
+  panelEl.hidden = stage !== 'brakes'; enginePanelEl.hidden = stage !== 'engine'; gearPanelEl.hidden = stage !== 'gearbox'; elecPanelEl.hidden = stage !== 'electrical';
+  $('#faults').hidden = stage !== 'brakes'; $('#engineFaults').hidden = stage !== 'engine'; $('#gearFaults').hidden = stage !== 'gearbox'; $('#elecFaults').hidden = stage !== 'electrical';
   $('.bottombar').hidden = !body;
   tDims.hidden = !body; if (!body) setDims(false);
   explodeTarget = explodeNow = 0; explodeInput.value = 0; explodeOut.textContent = '0%'; applyExplode(0);
@@ -496,11 +502,13 @@ function setStage(next) {
   holding = false;
   if (stage === 'engine') { eng.target = null; setPlaying(!reduceMotion()); }
   gbEndHold(); if (stage !== 'gearbox') setNeutralLamp(false);
+  elReleaseAll(); if (stage !== 'electrical') { poseLamps({}); setDialLamps({ turn: false, high: false }); }
   applyGhosts(); select(null);
   updateViewShift();
   if (stage === 'brakes') setBrake(brakeKey, true);
   else if (stage === 'engine') { setFollow(eng.follow); setViewButtons(''); flyTo(enginePose('cyl')); }
   else if (stage === 'gearbox') { gbReadouts(); setViewButtons(''); flyTo(gearPose('gears')); }
+  else if (stage === 'electrical') { setViewButtons(''); flyTo(elecPose('lights')); }
   else goView('three');
   syncUI();
 }
@@ -545,7 +553,9 @@ function updateBrakes(dt) {
     byId.get(B.key === 'f' ? 'fwheel' : 'rwheel').group.children[0].rotation.z = -B.spin;
     B.drumGrp.rotation.z = -B.spin;
   });
-  TAIL_GLOW.opacity += ((nr.tEff >= BRAKE_UI.r.switchAt ? 0.9 : 0) - TAIL_GLOW.opacity) * Math.min(1, dt * 14);
+  // stop lamp: lit by the rear brake switch in the brake stage, or by the stop circuit in the electrical stage
+  const stopOn = Math.max(nr.tEff >= BRAKE_UI.r.switchAt ? 0.9 : 0, el.stopGlow);
+  TAIL_GLOW.opacity += (stopOn - TAIL_GLOW.opacity) * Math.min(1, dt * 14);
   if (stage === 'brakes') updateReadouts();
 }
 
@@ -803,7 +813,135 @@ function gbReadouts() {
 $('#gpGear').textContent = 'N';
 gpRpm.value = gb.rpm; gpAdj.value = CLUTCH.slackMax - gb.slack; gpPlate.value = gb.plate;
 
+/* =====================================================================
+   Stage 5: electrical (work the switches, follow the current)
+   ===================================================================== */
+const FLASH_PERIOD = 60 / 85;          // about 85 flashes a minute (est; the manual gives no rate)
+const CRANK_TO_RUN = 1.5;              // seconds of cranking before the engine fires (shown, not measured)
+const el = {
+  sw: { key: false, lights: false, beam: 'lo', turn: null, horn: false, fbrake: false, rbrake: false, start: false, fuse: true, flat: false },
+  engine: 'stopped', crankT: 0, deg: 0, starterDeg: 0, t: 0, inside: true, sel: 'head', stopGlow: 0, lastLive: new Set(), out: null,
+};
+const ELEC_FIGS = [
+  ['System voltage (your bike)', '12 V, negative earth'],
+  ['Main fuse', '20 A, spare in the side panel'],
+  ['Contact breaker gap', '0.3–0.4 mm'],
+  ['Ignition timing', '15° BTDC idle (F mark)'],
+  ['Full advance', '32–35° BTDC by 2,800 rpm'],
+  ['Spark plug gap', '0.6–0.7 mm'],
+  ['Plugs (UK)', 'NGK CR7HS or ND U22FSR-L'],
+  ['Starter brushes (limit)', '12.2–12.4 (7.0) mm'],
+  ['Commutator mica depth (limit)', '0.5–0.8 (0.2) mm'],
+  ['Electrolyte specific gravity', '1.260–1.280'],
+  ['Charging rate', 'one tenth of capacity'],
+  ['Bulbs, manual (6 V models)', 'head 35/35 W, tail/stop 5/21 W, indicators 21 W'],
+];
+$('#xpFigs').innerHTML = ELEC_FIGS.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+$('#xpNote').textContent = 'Your bike is 12 V; the models in the workshop manual are 6 V, so its bulb wattages and charging voltages do not apply to your bike: check the ratings printed on the bulbs. The circuit layout, the 20 A fuse and the ignition figures follow the manual. Wire routes are approximate and the wiring diagram is too small to read the wire colours. The engine turns slowly here so the spark can be seen.';
+
+function syncElecButtons() {
+  const s = el.sw;
+  document.querySelectorAll('[data-key]').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.key === +s.key)));
+  document.querySelectorAll('[data-lights]').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.lights === +s.lights)));
+  document.querySelectorAll('[data-beam]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.beam === s.beam)));
+  document.querySelectorAll('[data-turn]').forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.turn || null) === s.turn)));
+  $('#xpFuse').setAttribute('aria-pressed', String(!s.fuse)); $('#xpFuse').textContent = s.fuse ? 'Pull the 20 A fuse' : 'Refit the fuse';
+  $('#xpFlat').setAttribute('aria-pressed', String(s.flat)); $('#xpFlat').textContent = s.flat ? 'Charge the battery' : 'Flat battery';
+}
+document.querySelectorAll('[data-key]').forEach((b) => b.addEventListener('click', () => { el.sw.key = b.dataset.key === '1'; el.sel = el.sw.key ? 'ignition' : el.sel; syncElecButtons(); }));
+document.querySelectorAll('[data-lights]').forEach((b) => b.addEventListener('click', () => { el.sw.lights = b.dataset.lights === '1'; el.sel = 'head'; syncElecButtons(); }));
+document.querySelectorAll('[data-beam]').forEach((b) => b.addEventListener('click', () => { el.sw.beam = b.dataset.beam; el.sel = 'head'; syncElecButtons(); }));
+document.querySelectorAll('[data-turn]').forEach((b) => b.addEventListener('click', () => { el.sw.turn = b.dataset.turn || null; if (el.sw.turn) el.sel = 'turn'; syncElecButtons(); }));
+$('#xpFuse').addEventListener('click', () => { el.sw.fuse = !el.sw.fuse; syncElecButtons(); });
+$('#xpFlat').addEventListener('click', () => { el.sw.flat = !el.sw.flat; syncElecButtons(); });
+const HOLD_SEL = { horn: 'horn', fbrake: 'stop', rbrake: 'stop', start: 'starting' };
+document.querySelectorAll('[data-hold]').forEach((b) => {
+  const k = b.dataset.hold;
+  const down = (e) => { if (e) e.preventDefault(); el.sw[k] = true; el.sel = HOLD_SEL[k]; b.classList.add('down'); };
+  const up = () => { if (!el.sw[k]) return; el.sw[k] = false; b.classList.remove('down'); };
+  b.addEventListener('pointerdown', (e) => { down(e); try { b.setPointerCapture(e.pointerId); } catch (err) { /* capture is optional */ } });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => b.addEventListener(ev, up));
+  b.addEventListener('keydown', (e) => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) down(e); });
+  b.addEventListener('keyup', (e) => { if (e.key === ' ' || e.key === 'Enter') up(); });
+  b.addEventListener('contextmenu', (e) => e.preventDefault());
+});
+function elReleaseAll() { ['horn', 'fbrake', 'rbrake', 'start'].forEach((k) => { el.sw[k] = false; }); document.querySelectorAll('[data-hold]').forEach((b) => b.classList.remove('down')); }
+$('#xpLive').addEventListener('click', (e) => { const c = e.target.closest('[data-circ]'); if (c) { el.sel = c.dataset.circ; elReadouts(); } });
+document.querySelectorAll('[data-xview]').forEach((b) => b.addEventListener('click', () => { setViewButtons(''); flyTo(elecPose(b.dataset.xview)); }));
+$('#xpInside').addEventListener('click', (e) => { el.inside = !el.inside; e.currentTarget.setAttribute('aria-pressed', String(el.inside)); applyGhosts(); });
+$('#xpCollapse').addEventListener('click', (e) => {
+  const open = e.currentTarget.getAttribute('aria-expanded') === 'true';
+  e.currentTarget.setAttribute('aria-expanded', String(!open)); e.currentTarget.textContent = open ? 'Show' : 'Hide';
+  $('#xpBody').hidden = open;
+  updateViewShift();
+});
+function elecPose(which) {
+  const m = Math.max(1, (which === 'lights' ? 1.3 : 0.95) / effAspect());
+  let target, off;
+  if (which === 'battery') { target = V(0.33, 0.58, 0.06); off = V(-0.08, 0.14, 0.62); }
+  else if (which === 'bars') { target = V(0.9, 1.0, 0); off = V(-0.6, 0.38, -0.05); }
+  else if (which === 'ignition') { target = V(0.71, 0.48, -0.08); off = V(0.12, 0.16, -0.72); }
+  else { target = V(0.55, 0.65, 0); off = V(1.7, 0.75, -1.9); }
+  return { pos: target.clone().addScaledVector(off, m), target };
+}
+
+/* switches -> engine state -> circuits -> pose */
+function elSim(dt) {
+  const s = el.sw, keyLive = s.key && s.fuse;
+  el.t += dt;
+  if (s.start && keyLive && !s.flat && el.engine !== 'running') {
+    el.engine = 'cranking'; el.crankT += dt;
+    if (el.crankT >= CRANK_TO_RUN) el.engine = 'running';
+  } else if (el.engine === 'cranking') { el.engine = 'stopped'; el.crankT = 0; }
+  if (el.engine === 'running' && !keyLive) { el.engine = 'stopped'; el.crankT = 0; }
+  const starterRate = el.engine === 'cranking' ? 900 : 0;                   // shown degrees a second
+  el.starterDeg += starterRate * dt;
+  el.deg = wrapDeg(el.deg + (el.engine === 'running' ? 360 : starterRate * 11 / 35.5) * dt, 720);
+  const flash = !!s.turn && (el.t % FLASH_PERIOD) < FLASH_PERIOD * 0.5;
+  const sp = wrapDeg(el.deg, 360), spark = el.engine !== 'stopped' && sp > 335 && sp < 357;
+  const state = { ...s, engine: el.engine, neutral: gearLabel(gb.drumDeg) === 'N', flash, spark };
+  el.out = evalCircuits(state);
+  return state;
+}
+function updateElectrical(dt) {
+  if (stage !== 'electrical') { el.stopGlow = 0; return; }
+  const state = elSim(dt), o = el.out, L = o.live, b = o.bright;
+  poseElectrical(state, o.segs, dt, { crankDeg: el.deg, starterDeg: el.starterDeg });
+  poseEngine(el.deg, { gas: false, spark: L.ignition });
+  poseLamps({ head: L.head ? b : 0, main: el.sw.beam === 'hi', turnL: L.turn && state.flash && el.sw.turn === 'L' ? b : 0, turnR: L.turn && state.flash && el.sw.turn === 'R' ? b : 0, tail: L.tail ? b : 0, horn: L.horn && o.hornWorks ? 1 : 0, t: el.t });
+  el.stopGlow = L.stop ? 0.9 * b : 0;
+  setDialLamps({ turn: L.turn && state.flash, neutral: L.neutral, high: L.high });
+  elReadouts();
+}
+function elReadouts() {
+  const o = el.out; if (!o) return;
+  const s = el.sw, liveIds = CIRCUITS.filter((c) => o.live[c.id]).map((c) => c.id);
+  if (!o.live[el.sel] && liveIds.length) el.sel = liveIds.find((id) => id !== 'neutral') ?? liveIds[0];   // follow what is live
+  const eng = el.engine;
+  chip($('#chEngine'), eng === 'running' ? 'ok' : eng === 'cranking' ? 'warn' : 'idle', eng === 'running' ? 'Running' : eng === 'cranking' ? 'Cranking' : 'Stopped');
+  $('#rdEngine').textContent = eng === 'running' ? 'charging the battery' : eng === 'cranking' ? 'starter turning it' : s.start && s.flat ? 'solenoid clicks, no turn' : s.start && !(s.key && s.fuse) ? 'no power to the button' : 'press and hold Start';
+  chip($('#chBattery'), s.flat ? 'bad' : 'ok', s.flat ? 'Flat' : '12 V');
+  $('#rdBattery').textContent = s.flat ? (eng === 'running' ? 'charging' : 'lamps dim, horn dead') : 'charged';
+  chip($('#chFuse'), s.fuse ? 'ok' : 'bad', s.fuse ? '20 A OK' : 'Pulled');
+  $('#rdFuse').textContent = s.fuse ? '' : 'nothing works';
+  $('#rdCount').textContent = `${liveIds.length}`;
+  const key = liveIds.join(',') + el.sel;
+  if (key !== el.liveKey) {
+    el.liveKey = key;
+    $('#xpLive').innerHTML = liveIds.length
+      ? liveIds.map((id) => `<button type="button" class="chip xp-chip" data-circ="${id}" data-state="${id === el.sel ? 'on' : 'ok'}" aria-pressed="${id === el.sel}">${BY_ID[id].name}</button>`).join('')
+      : `<span class="xp-none">${!s.fuse ? 'No circuit is live: the fuse is out.' : !s.key ? 'No circuit is live: turn the key ON.' : 'No circuit is live: use a switch.'}</span>`;
+    const c = BY_ID[el.sel];
+    $('#xpCirc').textContent = `${c.name}${o.live[c.id] ? '' : ' (not live)'}`;
+    $('#xpSteps').innerHTML = c.steps.map((t) => `<li class="${o.live[c.id] ? 'done' : ''}">${t}</li>`).join('');
+  }
+  $('#xpFault').textContent = !s.fuse
+    ? 'Fuse out: nothing works, as with a blown fuse or a disconnected battery. Before fitting a new 20 A fuse, look for the short circuit that blew it.'
+    : s.flat ? 'Flat battery: the lamps are dim, the horn does not sound and the starter only clicks. Recharge it at one tenth of its capacity, then check the alternator output if it goes flat again.' : 'Try pulling the fuse or flattening the battery to see the faults in the fault finder.';
+}
+
 PARTS.forEach((p) => setVisible(p.id, p.visible)); showSystems();
+syncElecButtons();
 
 /* =====================================================================
    Loop
@@ -812,6 +950,7 @@ let first = true, camFrozen = false, lastT = performance.now();
 function frame(now) {
   const dt = Math.min(0.25, Math.max(0, (now - lastT) / 1000)); lastT = now;
   updateGearbox(dt);
+  updateElectrical(dt);
   updateBrakes(dt);
   updateEngine(dt);
   if (tween) {
@@ -853,6 +992,16 @@ window.viewer = {
   },
   gearView: (w) => { const p = gearPose(w); tween = null; camera.position.copy(p.pos); controls.target.copy(p.target); controls.update(); },
   shift,
+  // switch state (any of key, lights, beam, turn, horn, fbrake, rbrake, start, fuse, flat); run: seconds to simulate; returns the live circuits
+  electrical: ({ run = 0.2, engine, ...sw } = {}) => {
+    Object.assign(el.sw, sw);
+    if (engine) { el.engine = engine; el.crankT = 0; }
+    syncElecButtons();
+    for (let t = 0; t < run; t += 0.05) elSim(0.05);
+    updateElectrical(0);
+    return { engine: el.engine, live: CIRCUITS.filter((c) => el.out.live[c.id]).map((c) => c.id), segs: [...el.out.segs] };
+  },
+  elecView: (w) => { const p = elecPose(w); tween = null; camera.position.copy(p.pos); controls.target.copy(p.target); controls.update(); },
   // used for lining the model up with reference photos
   photoCam: (pos, target, up, fov) => { camFrozen = true; scene.fog = null; tween = null; camera.position.set(...pos); camera.up.set(...up); camera.fov = fov; camera.updateProjectionMatrix(); camera.lookAt(...target); },
 };

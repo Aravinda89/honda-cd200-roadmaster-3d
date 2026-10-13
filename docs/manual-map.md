@@ -67,5 +67,16 @@ Use the CD200T column wherever the manual gives figures per model.
   spindle nut 4.0–5.0 kgf m.
 - Clutch and gearbox fault diagnosis: PDF p.74–75 (printed 73–74).
 - Torques: swinging arm pivot bolt 4.0–5.0 kgf m; wheel spindle nuts 4.0–5.0 kgf m.
-- Electrical: the maintenance section describes a 6 V 12 Ah lead-acid battery. Check this against the
-  owner's bike and the wiring diagram before stage 5; some CD200 variants are 12 V.
+- Electrical: the manual's models are 6 V (Yuasa 6N12A-2C, 12 Ah). **The owner's bike is 12 V**, so
+  the manual's voltage-dependent figures are shown only as "manual (6 V models)".
+- Electrical system (chapter 6, specs p.129–130): negative earth; fuse 20 A, spare in the right side
+  panel (p.133); alternator 8-coil stator on the 200 (Hitachi); combined regulator/rectifier behind the
+  right frame side panel, to the rear of the battery (p.131); starter motor at the front of the
+  crankcase, left side, driving through a chain and one-way clutch behind the alternator (p.134);
+  starter brushes 12.2–12.4 mm (limit 7.0), mica depth 0.5–0.8 mm (limit 0.2); starter solenoid
+  function p.134; battery SG 1.260–1.280, charge at one tenth of capacity (p.131, 133). Bulbs (6 V):
+  head 35/35 W, tail/stop 5/21 W, indicators 21 W, warning lamps 3 W / 1.7 W (p.130). Alternator
+  drawing fig 6.2 (p.132). Wiring diagram "CD and CM 200 T" p.144 (too small to read the wire
+  colours). Electrical fault diagnosis p.141 (printed 140).
+- Ignition (chapter 3): contact breaker gap 0.3–0.4 mm; condenser 0.22–0.26 µF; ignition fault
+  diagnosis p.96 (printed 95).

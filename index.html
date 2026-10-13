@@ -83,6 +83,19 @@
       <p class="src">Source: Haynes manual no. 572, chapter 1, fault diagnosis: clutch and gearbox.</p>
     </section>
 
+    <section id="elecFaults" hidden aria-labelledby="elecFaultsTitle">
+      <h2 class="block-title" id="elecFaultsTitle">Electrical fault finder</h2>
+      <div class="faults">
+        <div class="fault"><h3>Nothing electrical works</h3><ul><li><b>Blown fuse:</b> find the short circuit before fitting a new 20 A fuse.</li><li><b>Battery disconnected:</b> check the leads and look for corroded terminals.</li></ul></div>
+        <div class="fault"><h3>Lights dim, horn does not work</h3><ul><li><b>Flat battery:</b> recharge it, then check that the alternator is charging.</li></ul></div>
+        <div class="fault"><h3>Bulbs keep blowing</h3><ul><li><b>Vibration or a poor earth:</b> check the bulb holders are secure and the earth returns to the frame are clean.</li></ul></div>
+        <div class="fault"><h3>Engine will not start</h3><ul><li><b>Defective ignition coil:</b> renew it.</li><li><b>Dirty or poorly touching points:</b> clean or renew them and reset the gap.</li><li><b>Faulty condenser:</b> renew it.</li></ul></div>
+        <div class="fault"><h3>Starts but runs erratically or misfires</h3><ul><li><b>Wrong plug gap, or worn plugs:</b> clean and reset to 0.6–0.7 mm, or renew.</li><li><b>Wrong timing or points gap:</b> check both.</li><li><b>Weak points arm spring, faulty condenser, cracked plug lead insulation, low alternator output.</b></li></ul></div>
+        <div class="fault"><h3>Lacks power and overheats</h3><ul><li><b>Retarded ignition timing:</b> check the timing and the points gap, and that the automatic timing unit has not jammed.</li></ul></div>
+      </div>
+      <p class="src">Source: Haynes manual no. 572, chapter 6 and chapter 3, fault diagnosis.</p>
+    </section>
+
     <section aria-labelledby="partsTitle">
       <h2 class="block-title" id="partsTitle">Parts by system</h2>
       <div id="systems"></div>
@@ -104,8 +117,8 @@
         <li><button type="button" data-stage="body" aria-pressed="true">Outer body</button> <span class="tag">Done</span></li>
         <li><button type="button" data-stage="brakes" aria-pressed="false">Brakes</button> <span class="tag">Done</span></li>
         <li><button type="button" data-stage="engine" aria-pressed="false">Engine internals</button> <span class="tag">Done</span></li>
-        <li class="now"><button type="button" data-stage="gearbox" aria-pressed="false">Clutch and gearbox</button> <span class="tag">New</span></li>
-        <li>Electrical <span class="tag soon">Next</span></li>
+        <li><button type="button" data-stage="gearbox" aria-pressed="false">Clutch and gearbox</button> <span class="tag">Done</span></li>
+        <li class="now"><button type="button" data-stage="electrical" aria-pressed="false">Electrical</button> <span class="tag">New</span></li>
       </ol>
     </section>
   </aside>
@@ -120,6 +133,7 @@
         <button type="button" id="st-brakes" data-stage="brakes" aria-pressed="false">Brakes</button>
         <button type="button" id="st-engine" data-stage="engine" aria-pressed="false">Engine</button>
         <button type="button" id="st-gearbox" data-stage="gearbox" aria-pressed="false">Gearbox</button>
+        <button type="button" id="st-electrical" data-stage="electrical" aria-pressed="false">Electrical</button>
       </div>
       <div class="seg" role="group" aria-label="Camera view">
         <button type="button" id="v-three" data-view="three" aria-pressed="true">3/4</button>
@@ -311,6 +325,60 @@
           </div>
         </details>
         <p class="bp-note" id="gpNote"></p>
+      </div>
+    </section>
+
+    <section id="elecPanel" class="bpanel" hidden aria-label="Electrical controls">
+      <div class="bp-head">
+        <div class="bp-tabs xp-seg" role="group" aria-label="Ignition key">
+          <button type="button" data-key="0" aria-pressed="true">Key off</button>
+          <button type="button" data-key="1" aria-pressed="false">Key on</button>
+        </div>
+        <button type="button" class="bp-collapse" id="xpCollapse" aria-expanded="true" aria-controls="xpBody">Hide</button>
+      </div>
+      <div id="xpBody">
+        <div class="xp-sw">
+          <span class="xp-l" id="xlLights">Lights</span>
+          <div class="bp-tabs xp-seg" role="group" aria-labelledby="xlLights"><button type="button" data-lights="0" aria-pressed="true">Off</button><button type="button" data-lights="1" aria-pressed="false">On</button></div>
+          <span class="xp-l" id="xlBeam">Beam</span>
+          <div class="bp-tabs xp-seg" role="group" aria-labelledby="xlBeam"><button type="button" data-beam="lo" aria-pressed="true">Lo</button><button type="button" data-beam="hi" aria-pressed="false">Hi</button></div>
+          <span class="xp-l" id="xlTurn">Turn</span>
+          <div class="bp-tabs xp-seg" role="group" aria-labelledby="xlTurn"><button type="button" data-turn="L" aria-pressed="false">L</button><button type="button" data-turn="" aria-pressed="true">Off</button><button type="button" data-turn="R" aria-pressed="false">R</button></div>
+        </div>
+        <div class="xp-hold" role="group" aria-label="Hold to use">
+          <button type="button" class="ep-step" data-hold="horn">Horn</button>
+          <button type="button" class="ep-step" data-hold="fbrake">Front brake</button>
+          <button type="button" class="ep-step" data-hold="rbrake">Rear brake</button>
+          <button type="button" class="ep-step xp-start" data-hold="start">Start</button>
+        </div>
+        <dl class="bp-read">
+          <div><dt>Engine</dt><dd><span class="chip" id="chEngine">Stopped</span><small id="rdEngine"></small></dd></div>
+          <div><dt>Battery</dt><dd><span class="chip" id="chBattery">12 V</span><small id="rdBattery"></small></dd></div>
+          <div><dt>Main fuse</dt><dd><span class="chip" id="chFuse">20 A OK</span><small id="rdFuse"></small></dd></div>
+          <div><dt>Live circuits</dt><dd><span id="rdCount">0</span></dd></div>
+        </dl>
+        <div class="xp-live" id="xpLive" aria-live="polite"></div>
+        <p class="xp-circ" id="xpCirc">Headlamp</p>
+        <ol class="bp-steps" id="xpSteps"></ol>
+        <div class="bp-row">
+          <button type="button" data-xview="lights">Whole bike</button>
+          <button type="button" data-xview="bars">Handlebar</button>
+          <button type="button" data-xview="battery">Battery</button>
+          <button type="button" data-xview="ignition">Ignition</button>
+          <button type="button" id="xpInside" aria-pressed="true">See inside</button>
+        </div>
+        <details class="bp-checks">
+          <summary>Workshop checks</summary>
+          <div class="inner">
+            <div class="bp-row">
+              <button type="button" id="xpFuse" aria-pressed="false">Pull the 20 A fuse</button>
+              <button type="button" id="xpFlat" aria-pressed="false">Flat battery</button>
+            </div>
+            <p class="bp-hint" id="xpFault"></p>
+            <dl class="ep-figs" id="xpFigs"></dl>
+          </div>
+        </details>
+        <p class="bp-note" id="xpNote"></p>
       </div>
     </section>
 

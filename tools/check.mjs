@@ -46,6 +46,14 @@ const SHOTS = {
   g_fourth: { stage: 'gearbox', gearbox: { gear: '4', rpm: 3000, lever: 0 }, gview: 'gears' },
   g_clutch: { stage: 'gearbox', gearbox: { gear: '2', rpm: 2000, lever: 45 }, gview: 'clutch' },
   g_chain: { stage: 'gearbox', gearbox: { gear: '3', rpm: 3000, lever: 0 }, gview: 'chain' },
+  // electrical: switch state passed to viewer.electrical; run is seconds to simulate
+  x_off: { stage: 'electrical', elec: { key: false, lights: false, turn: null, fuse: true, flat: false, engine: 'stopped' }, xview: 'lights' },
+  x_lights: { stage: 'electrical', elec: { key: true, lights: true, beam: 'hi', turn: null, fuse: true, flat: false, engine: 'stopped' }, xview: 'lights' },
+  x_turn: { stage: 'electrical', elec: { key: true, lights: false, turn: 'L', fuse: true, flat: false, engine: 'stopped', run: 0.1 }, xview: 'bars' },
+  x_start: { stage: 'electrical', elec: { key: true, lights: false, turn: null, start: true, fuse: true, flat: false, engine: 'stopped', run: 0.5 }, xview: 'ignition' },
+  x_run: { stage: 'electrical', elec: { key: true, lights: false, turn: null, start: false, fuse: true, flat: false, engine: 'running', run: 0.95 }, xview: 'ignition' },
+  x_battery: { stage: 'electrical', elec: { key: true, lights: true, beam: 'lo', turn: null, start: false, fuse: true, flat: false, engine: 'running', run: 0.2 }, xview: 'battery' },
+  x_fuse: { stage: 'electrical', elec: { key: true, lights: true, turn: null, start: false, fuse: false, flat: false, engine: 'stopped' }, xview: 'lights' },
   // close-ups for comparing details with the owner's photos: cam = [position, target, fov].
   // photoCam freezes the camera, so these run last and only when asked for (--shots=d_tank or --details).
   d_tank: { cam: [[0.75, 0.86, -0.62], [0.75, 0.78, -0.1], 30] },
@@ -110,6 +118,8 @@ if (info) {
       if (s.eview) v.engineView(s.eview);
       if (s.gearbox) v.gearbox(s.gearbox);
       if (s.gview) v.gearView(s.gview);
+      if (s.elec) v.electrical(s.elec);
+      if (s.xview) v.elecView(s.xview);
       if (s.view) v.view(s.view);
       v.explode(s.explode || 0);
       if (s.dims) v.dims();
