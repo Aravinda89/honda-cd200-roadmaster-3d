@@ -6,7 +6,7 @@ cycle, shift through the gearbox and follow the current round the wiring.
 
 **Live:** https://aravinda89.github.io/honda-cd200-roadmaster-3d/
 
-![The model of the bike, three-quarter view](docs/screenshots/body.jpg)
+![The model of the bike turning on the spot](docs/screenshots/turntable.gif)
 
 ## What you can do
 
@@ -21,6 +21,10 @@ The page has five stages, chosen from the buttons above the bike.
 | 5 | **Electrical** | Turn the key and work the switches: lights, dip, indicators, horn, stop lamp. Live circuits light up on the wiring from the battery and fuse to the lamp and back through the frame. Hold the starter button to crank the engine, then watch the ignition fire and the alternator charge. Pull the fuse or flatten the battery to see the faults. |
 
 Every stage has a fault finder with the workshop manual's causes and remedies.
+
+**Moving around:** drag to turn the bike, two fingers or right-drag to move it, and pinch or scroll
+to zoom towards the pointer. Double-click a part to fly to it. The buttons on the right zoom in and
+out and go back to the whole view, and the arrow keys, + / − and 0 do the same from the keyboard.
 
 <table>
 <tr>
@@ -64,7 +68,9 @@ npm run serve        # http://localhost:8080
 npm run check        # loads the page headless, fails on any script error, saves screenshots
 ```
 
-`npm run check -- --readme` regenerates the images in `docs/screenshots`.
+`npm run check -- --readme` regenerates the images in `docs/screenshots`. The turning GIF comes from
+`node tools/turntable.mjs` then `python tools/make_gif.py tools/out/turntable docs/screenshots/turntable.gif`
+(needs Pillow).
 
 ## Credits
 

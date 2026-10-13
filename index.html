@@ -159,13 +159,27 @@
       </div>
     </div>
 
+    <div class="navpad" role="group" aria-label="Camera">
+      <button type="button" id="nvIn" aria-label="Zoom in" title="Zoom in (+)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button type="button" id="nvOut" aria-label="Zoom out" title="Zoom out (−)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+      <button type="button" id="nvFit" aria-label="Back to the whole view" title="Whole view (0)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      <button type="button" id="nvHelp" aria-label="How to move around" aria-expanded="false" aria-controls="navHelp" title="How to move around">?</button>
+    </div>
+    <div class="navhelp" id="navHelp" hidden>
+      <p><b>Turn</b> drag with one finger or the left mouse button</p>
+      <p><b>Move</b> two fingers, right-drag, or Shift + drag</p>
+      <p><b>Zoom</b> pinch or scroll; it zooms towards the pointer</p>
+      <p><b>Fly to a part</b> double-click or double-tap it</p>
+      <p><b>Keys</b> arrows turn, Shift + arrows move, + and − zoom, 0 whole view</p>
+    </div>
+
     <div class="bottombar">
       <div class="explode">
         <label for="explode">Explode</label>
         <input type="range" id="explode" min="0" max="100" value="0">
         <output id="explodeOut" for="explode">0%</output>
       </div>
-      <p class="legend">Floor grid: 100 mm squares · drag to orbit, scroll or pinch to zoom</p>
+      <p class="legend">Floor grid: 100 mm squares · ? on the right shows how to move around</p>
     </div>
 
     <section id="brakePanel" class="bpanel" hidden aria-label="Brake controls">
@@ -419,7 +433,7 @@
         </ol>
         <p class="intro-key"><span class="basis" data-basis="manual">Manual</span> <span class="basis" data-basis="photo">Photo</span> <span class="basis" data-basis="est">Estimate</span> Every part says where its size came from.</p>
         <button type="button" class="hold intro-go" id="introClose">Explore the bike</button>
-        <p class="intro-small">Drag to orbit, scroll or pinch to zoom. Figures from the Haynes Owners Workshop Manual no. 572; not affiliated with Honda.</p>
+        <p class="intro-small">Drag to turn the bike, two fingers or right-drag to move it, pinch or scroll to zoom, double-click a part to fly to it; the buttons on the right zoom and reset the view. Figures from the Haynes Owners Workshop Manual no. 572; not affiliated with Honda.</p>
       </div>
     </div>
   </main>

@@ -66,12 +66,21 @@ scene.add(grid);
 const camera = new THREE.PerspectiveCamera(32, 1, 0.05, 60);
 let viewShift = { x: 0, y: 0 };
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true; controls.dampingFactor = 0.08;
-controls.minDistance = 0.45; controls.maxDistance = 11;
+controls.enableDamping = true; controls.dampingFactor = 0.09;
+controls.minDistance = 0.12; controls.maxDistance = 8;   // close enough for the engine internals and switch blocks
 controls.maxPolarAngle = Math.PI / 2 - 0.03;
 controls.autoRotateSpeed = 1.1;
+controls.zoomToCursor = true;                             // scroll / pinch zooms towards the point under the pointer
+controls.zoomSpeed = 1.1; controls.rotateSpeed = 0.85; controls.panSpeed = 1.0;
+controls.screenSpacePanning = true;
 const CENTER = V(0.62, 0.62, 0);
 controls.target.copy(CENTER);
+// keep the point the camera orbits round on or near the bike, so panning and zooming cannot lose it
+const TARGET_BOX = new THREE.Box3(V(-0.55, 0.0, -0.5), V(1.65, 1.35, 0.5));
+controls.addEventListener('change', () => {
+  const t = controls.target, c = TARGET_BOX.clampPoint(t, new THREE.Vector3());
+  if (!c.equals(t)) { camera.position.add(c.clone().sub(t)); t.copy(c); }
+});
 
 /* ---------- dimensions overlay ---------- */
 const dims = new THREE.Group(); dims.visible = false; scene.add(dims);
@@ -250,10 +259,64 @@ function focusPart(id) {
   if (box.isEmpty()) return;
   const c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3()).length();
   const dir = camera.position.clone().sub(controls.target).normalize();
-  const dist = Math.max(0.6, size * 1.9) * Math.max(1, 1.2 / camera.aspect);
+  const dist = Math.max(0.25, size * 1.8) * Math.max(1, 1.2 / effAspect());
   setViewButtons('');
   flyTo({ pos: c.clone().addScaledVector(dir, dist), target: c });
 }
+
+/* ---------- moving around: zoom buttons, whole view, double-click to fly, keys ---------- */
+function homeView() {   // the stage's starting view
+  setViewButtons(stage === 'body' ? 'three' : '');
+  flyTo(stage === 'brakes' ? brakePose(brakeKey, 'hub') : stage === 'engine' ? enginePose('cyl')
+    : stage === 'gearbox' ? gearPose('gears') : stage === 'electrical' ? elecPose('lights') : viewPose('three'));
+}
+function zoomBy(k) {    // k < 1 closer, k > 1 further, about the current orbit centre
+  const from = tween ? tween.t1 : controls.target, pos = tween ? tween.p1 : camera.position;
+  const off = pos.clone().sub(from), d = THREE.MathUtils.clamp(off.length() * k, controls.minDistance, controls.maxDistance);
+  setViewButtons('');
+  flyTo({ pos: from.clone().add(off.setLength(d)), target: from.clone() }, 280);
+}
+function orbitBy(dAz, dEl) {
+  const s = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
+  s.theta += dAz; s.phi = THREE.MathUtils.clamp(s.phi + dEl, 0.05, controls.maxPolarAngle);
+  setViewButtons('');
+  flyTo({ pos: controls.target.clone().add(new THREE.Vector3().setFromSpherical(s)), target: controls.target.clone() }, 220);
+}
+function panBy(dx, dy) {  // fractions of the view; moves camera and centre together
+  const dist = camera.position.distanceTo(controls.target), h = 2 * dist * Math.tan(camera.fov * DEG / 2);
+  const right = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 0), up = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 1);
+  const d = right.multiplyScalar(dx * h * camera.aspect).add(up.multiplyScalar(dy * h));
+  const t = TARGET_BOX.clampPoint(controls.target.clone().add(d), new THREE.Vector3());
+  setViewButtons('');
+  flyTo({ pos: camera.position.clone().add(t.clone().sub(controls.target)), target: t }, 220);
+}
+$('#nvIn').addEventListener('click', () => zoomBy(0.7));
+$('#nvOut').addEventListener('click', () => zoomBy(1.43));
+$('#nvFit').addEventListener('click', homeView);
+$('#nvHelp').addEventListener('click', (e) => {
+  const open = e.currentTarget.getAttribute('aria-expanded') !== 'true';
+  e.currentTarget.setAttribute('aria-expanded', String(open)); $('#navHelp').hidden = !open;
+});
+function closeNavHelp() { $('#nvHelp').setAttribute('aria-expanded', 'false'); $('#navHelp').hidden = true; }
+document.addEventListener('pointerdown', (e) => { if (!e.target.closest('#navHelp, #nvHelp')) closeNavHelp(); });
+window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeNavHelp(); });
+renderer.domElement.addEventListener('dblclick', (e) => {
+  const p = pick(e.clientX, e.clientY);
+  if (p) { select(p.id); focusPart(p.id); }
+});
+window.addEventListener('keydown', (e) => {
+  const t = e.target;
+  if (e.ctrlKey || e.metaKey || e.altKey || !$('#intro').hidden) return;
+  if (t && (t.matches('input, textarea, select') || t.isContentEditable)) return;
+  const step = 12 * DEG;
+  const act = {
+    '+': () => zoomBy(0.75), '=': () => zoomBy(0.75), '-': () => zoomBy(1.33), '_': () => zoomBy(1.33), 0: homeView, Home: homeView,
+    f: () => selected && focusPart(selected.id), F: () => selected && focusPart(selected.id),
+    ArrowLeft: () => (e.shiftKey ? panBy(-0.12, 0) : orbitBy(-step, 0)), ArrowRight: () => (e.shiftKey ? panBy(0.12, 0) : orbitBy(step, 0)),
+    ArrowUp: () => (e.shiftKey ? panBy(0, 0.12) : orbitBy(0, -step)), ArrowDown: () => (e.shiftKey ? panBy(0, -0.12) : orbitBy(0, step)),
+  }[e.key];
+  if (act && !(t && t.closest && t.closest('[role="tablist"], .bp-tabs') && e.key.startsWith('Arrow'))) { e.preventDefault(); act(); }
+});
 $('#infoClose').addEventListener('click', () => select(null));
 $('#aFocus').addEventListener('click', () => selected && focusPart(selected.id));
 $('#aHide').addEventListener('click', () => { if (!selected) return; isolated = null; setVisible(selected.id, false); syncUI(); });

@@ -27,6 +27,15 @@ full run is now about 10 minutes; split it with `--shots` when a tool limits com
 `npm run check -- --readme` regenerates the committed README and social-preview images in
 `docs/screenshots/` (JPEG, 1280×800); rerun it after visible changes. The check loads the page with
 `?nointro` so the first-visit intro screen stays out of the shots (`--intro` keeps it).
+The README's turning GIF: `node tools/turntable.mjs` (48 frames, 640×400, UI hidden) then
+`python tools/make_gif.py tools/out/turntable docs/screenshots/turntable.gif` (shared palette, no
+dithering, about 2 MB).
+
+**Camera.** OrbitControls with zoom towards the pointer, minimum distance 0.12 m (close enough for
+the engine internals), and the orbit centre clamped to a box round the bike (`TARGET_BOX`) so panning
+cannot lose it. The navigation pad on the right (`zoomBy`, `homeView`), double-click to fly to a
+part (`focusPart`) and the keys (arrows turn, Shift + arrows move, + / − zoom, 0 whole view, F focus
+the selected part) all go through `flyTo`. `homeView` returns to the current stage's starting view.
 
 There is no build step. `index.html` loads `js/app.js` as an ES module; three.js 0.160.0 comes from
 the jsDelivr CDN through the import map in `index.html`. Keep the version in the import map and
