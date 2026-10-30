@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-import { $, BASIS, DEG, FA, LAYSHAFT, MAINSHAFT, PARTS, R, RA, SYSTEMS, V, WB, bike, byId } from './core.js';
+import { $, BASIS, DEG, FA, LAYSHAFT, MAINSHAFT, PAINTS, PARTS, paintBase, R, RA, SYSTEMS, V, WB, bike, byId } from './core.js';
 import { SEAT_TOP } from './parts/body.js';
 import './parts/chassis.js';
 import { FRONT_R, REAR_R, poseFinalDrive } from './parts/wheels.js';
@@ -177,6 +177,34 @@ function applyExplode(t) {
   bike.traverse((o) => { if (o.userData.explode) o.position.copy(o.userData.home).addScaledVector(o.userData.explode, t); });
   HIDE_ON_EXPLODE.forEach((id) => { const p = byId.get(id); p.group.visible = p.visible && t < 0.04; });
 }
+/* =====================================================================
+   Paint colour: the bike's own blue, the owner's two choices, or any colour from the picker
+   ===================================================================== */
+const PAINT_KEY = 'cd200.paint';
+const swatchesEl = $('#swatches'), paintPick = $('#paintPick');
+swatchesEl.innerHTML = PAINTS.map((p) => `<button type="button" class="swatch" data-paint="${p.hex}" style="--c:${p.hex}" aria-pressed="false" aria-label="${p.name}" title="${p.name}"></button>`).join('');
+function setPaint(hex, save = true) {
+  const c = paintBase(hex);
+  bike.traverse((o) => {
+    if (!o.isMesh) return;
+    (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { if (m.userData.paint) m.color.copy(c); });
+  });
+  const preset = PAINTS.find((p) => p.hex.toLowerCase() === hex.toLowerCase());
+  swatchesEl.querySelectorAll('.swatch').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.paint.toLowerCase() === hex.toLowerCase())));
+  const pick = paintPick.parentElement;
+  pick.classList.toggle('on', !preset); pick.style.setProperty('--c', preset ? 'transparent' : hex);
+  paintPick.value = hex.toLowerCase();
+  $('#paintName').textContent = preset ? preset.name : hex.toUpperCase();
+  if (save) { try { localStorage.setItem(PAINT_KEY, hex); } catch (err) { /* storage may be blocked */ } }
+}
+swatchesEl.addEventListener('click', (e) => { const b = e.target.closest('[data-paint]'); if (b) setPaint(b.dataset.paint); });
+paintPick.addEventListener('input', () => setPaint(paintPick.value));
+{
+  let saved = null;
+  try { saved = localStorage.getItem(PAINT_KEY); } catch (err) { /* storage may be blocked */ }
+  setPaint(saved && /^#[0-9a-f]{6}$/i.test(saved) ? saved : PAINTS[0].hex, false);
+}
+
 const explodeInput = $('#explode'), explodeOut = $('#explodeOut');
 explodeInput.addEventListener('input', () => { explodeTarget = explodeInput.value / 100; explodeOut.textContent = `${explodeInput.value}%`; if (explodeTarget > 0 && dims.visible) setDims(false); });
 
@@ -1089,6 +1117,7 @@ window.viewer = {
     updateElectrical(0);
     return { engine: el.engine, live: CIRCUITS.filter((c) => el.out.live[c.id]).map((c) => c.id), segs: [...el.out.segs] };
   },
+  paint: (hex, save = false) => setPaint(hex || PAINTS[0].hex, save),
   intro: (on) => { if (on && introEl.hidden) openIntro(); else if (!on && !introEl.hidden) closeIntro(); },
   elecView: (w) => { const p = elecPose(w); tween = null; camera.position.copy(p.pos); controls.target.copy(p.target); controls.update(); },
   // used for lining the model up with reference photos

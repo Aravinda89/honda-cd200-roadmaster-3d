@@ -39,6 +39,8 @@ const SHOTS = {
   brakes_34: { stage: 'brakes', brake: 'r', t: 75, view: 'three' },
   // engine: deg is the crank angle, 0 = left cylinder TDC on compression
   intro: { view: 'three', intro: true },
+  paint_pink: { view: 'three', paint: '#f86ca3' },
+  paint_darkblue: { view: 'three', paint: '#2c5d90' },
   e_intake: { stage: 'engine', engine: { deg: 450 }, eview: 'cyl' },
   e_power: { stage: 'engine', engine: { deg: 20 }, eview: 'cyl' },
   e_head: { stage: 'engine', engine: { deg: 460 }, eview: 'head' },
@@ -130,6 +132,7 @@ if (info) {
       if (s.dims) v.dims();
       if (s.cam) v.photoCam(s.cam[0], s.cam[1], [0, 1, 0], s.cam[2]);
       v.intro(!!s.intro);
+      v.paint(s.paint);
     }, s);
     await page.waitForTimeout(1500);   // software rendering is slow; give the animations time to settle
     const file = flag('readme')

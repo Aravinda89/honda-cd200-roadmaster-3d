@@ -151,9 +151,27 @@ Object.assign(TEX, {
   })),
 });
 
+/* ---------- paint colours: the bike's own blue first, then the owner's two choices ---------- */
+// hex is the colour shown on the swatch. The clear-coated metallic paint renders lighter than its base
+// colour, so other colours are darkened a little for the material (paintBase) to look like the
+// swatch on screen; the original blue was already tuned against the owner's photos, so it is used as is.
+const PAINTS = [
+  { id: 'blue', name: 'Original blue', hex: '#2391cb', base: '#2391cb' },
+  { id: 'pink', name: 'Pink', hex: '#f86ca3' },
+  { id: 'darkblue', name: 'Dark blue', hex: '#2c5d90' },
+];
+function paintBase(hex) {
+  const preset = PAINTS.find((p) => p.hex.toLowerCase() === hex.toLowerCase());
+  if (preset && preset.base) return new THREE.Color(preset.base);
+  const hsl = new THREE.Color(hex).getHSL({}, THREE.SRGBColorSpace);
+  return new THREE.Color().setHSL(hsl.h, Math.min(1, hsl.s * 1.08), Math.max(0, hsl.l - 0.08), THREE.SRGBColorSpace);
+}
+const PAINT = { color: new THREE.Color(PAINTS[0].hex) };
+
 /* ---------- materials (each part makes its own, so highlighting stays per part) ---------- */
 const MAT = {
-  paint: () => new THREE.MeshPhysicalMaterial({ color: 0x2391cb, metalness: 0.35, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.05 }),
+  // body colour; tagged so the paint picker (setPaint in app.js) can find every painted surface
+  paint: () => { const m = new THREE.MeshPhysicalMaterial({ color: PAINT.color, metalness: 0.35, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.05 }); m.userData.paint = true; return m; },
   chrome: (side = THREE.FrontSide) => new THREE.MeshStandardMaterial({ color: 0xf2f4f6, metalness: 1, roughness: 0.07, side }),
   alloy: () => new THREE.MeshStandardMaterial({ color: 0xbabdbb, metalness: 0.8, roughness: 0.36 }),
   casting: () => new THREE.MeshStandardMaterial({ color: 0xa5a8a4, metalness: 0.62, roughness: 0.52 }),
@@ -393,4 +411,4 @@ function addPart(id, sys, name, basis, desc, explode = [0, 0, 0]) {
 function setExplode(obj, v) { obj.userData.explode = toV(v); obj.userData.home = obj.position.clone(); }
 function sideGroup(parent, explode) { const g = new THREE.Group(); parent.add(g); setExplode(g, explode); return g; }
 
-export { $, BASIS, CRANK, CYL_BASE, CYL_TILT, DEG, GEAR_C, canvasTexture, dialFace, LAYSHAFT, MAINSHAFT, PRIMARY_C, FA, FD, MAT, PARTS, R, RA, RIM, SYSTEMS, TEX, V, WB, Y_UP, addPart, arcPts, beltPath, bike, byId, chainLinks, extrude, fenderGeometry, forkPt, gearShape, hullOfCircles, lathe, loftGeometry, mesh, qAlong, rbox, rod, roundRectShape, sideGroup, smooth, superLoft, surfPatch, tube };
+export { $, BASIS, CRANK, CYL_BASE, CYL_TILT, DEG, GEAR_C, PAINTS, canvasTexture, paintBase, dialFace, LAYSHAFT, MAINSHAFT, PRIMARY_C, FA, FD, MAT, PARTS, R, RA, RIM, SYSTEMS, TEX, V, WB, Y_UP, addPart, arcPts, beltPath, bike, byId, chainLinks, extrude, fenderGeometry, forkPt, gearShape, hullOfCircles, lathe, loftGeometry, mesh, qAlong, rbox, rod, roundRectShape, sideGroup, smooth, superLoft, surfPatch, tube };
