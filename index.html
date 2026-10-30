@@ -25,6 +25,7 @@
 <body>
 <div id="app">
   <aside id="panel" aria-label="Parts index">
+    <button type="button" class="sheet-close" id="panelClose" aria-label="Close the parts list"><span class="grab" aria-hidden="true"></span>Close</button>
     <header>
       <p class="eyebrow" id="eyebrow">Stage 1 · Outer body</p>
       <h1>Honda CD200 Roadmaster</h1>
@@ -141,7 +142,7 @@
         <button type="button" id="st-gearbox" data-stage="gearbox" aria-pressed="false">Gearbox</button>
         <button type="button" id="st-electrical" data-stage="electrical" aria-pressed="false">Electrical</button>
       </div>
-      <div class="seg" role="group" aria-label="Camera view">
+      <div class="seg view-seg" role="group" aria-label="Camera view">
         <button type="button" id="v-three" data-view="three" aria-pressed="true">3/4</button>
         <button type="button" id="v-left" data-view="left" aria-pressed="false">Left</button>
         <button type="button" id="v-right" data-view="right" aria-pressed="false">Right</button>
@@ -149,13 +150,20 @@
         <button type="button" id="v-rear" data-view="rear" aria-pressed="false">Rear</button>
         <button type="button" id="v-top" data-view="top" aria-pressed="false">Top</button>
       </div>
+      <label class="view-sel"><span class="sr">Camera view</span>
+        <select id="viewSel">
+          <option value="" hidden>View</option>
+          <option value="three">3/4 view</option><option value="left">Left</option><option value="right">Right</option>
+          <option value="front">Front</option><option value="rear">Rear</option><option value="top">Top</option>
+        </select>
+      </label>
       </div>
       <div class="tools">
-        <button type="button" class="tool" id="tDims" aria-pressed="false"><span class="dot"></span>Dimensions</button>
-        <button type="button" class="tool" id="tSpin" aria-pressed="false"><span class="dot"></span>Spin</button>
-        <button type="button" class="tool" id="tReset">Reset</button>
-        <button type="button" class="tool" id="tAbout" aria-controls="intro">About</button>
-        <button type="button" class="tool" id="panelToggle" aria-expanded="false" aria-controls="panel">Parts</button>
+        <button type="button" class="tool" id="tDims" aria-pressed="false" title="Dimensions"><span class="dot"></span><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l14-14 4 4-14 14H3v-4zM7 13l2 2M10 10l2 2M13 7l2 2"/></svg><span class="tl">Dimensions</span></button>
+        <button type="button" class="tool" id="tSpin" aria-pressed="false" title="Spin"><span class="dot"></span><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg><span class="tl">Spin</span></button>
+        <button type="button" class="tool" id="tReset" title="Reset"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v5h5"/></svg><span class="tl">Reset</span></button>
+        <button type="button" class="tool" id="tAbout" aria-controls="intro" title="About"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span class="tl">About</span></button>
+        <button type="button" class="tool" id="panelToggle" aria-expanded="false" aria-controls="panel" title="Parts list"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg><span class="tl">Parts</span></button>
       </div>
     </div>
 

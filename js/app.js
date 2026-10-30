@@ -29,7 +29,11 @@ try {
   $('#loadingText').textContent = 'This browser could not start 3D graphics (WebGL). Try another browser or device.';
   throw err;
 }
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+// phones and tablets: the same layout rules as the CSS; render a little lighter there
+const PHONE_MQ = '(max-width: 760px), (max-height: 520px) and (orientation: landscape)';
+const LANDSCAPE_PHONE_MQ = '(max-height: 520px) and (orientation: landscape)';
+const LIGHT_DEVICE = window.matchMedia(`${PHONE_MQ}, (pointer: coarse)`).matches;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, LIGHT_DEVICE ? 1.5 : 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
@@ -52,7 +56,7 @@ const sun = new THREE.DirectionalLight(0xffffff, 1.5);
 sun.position.set(2.2, 4.2, -1.6);
 sun.target.position.set(0.6, 0, 0);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(LIGHT_DEVICE ? 1024 : 2048, LIGHT_DEVICE ? 1024 : 2048);
 Object.assign(sun.shadow.camera, { left: -1.7, right: 1.7, top: 1.7, bottom: -1.7, near: 0.5, far: 9 });
 sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
 scene.add(sun, sun.target);
@@ -140,9 +144,12 @@ resize();
 /* =====================================================================
    Camera views
    ===================================================================== */
+// Width-to-height ratio that decides how far back a view must stand for the subject to fit across.
+// The camera's height of view always spans the whole canvas, so a panel at the bottom (viewShift.y)
+// does not make the picture wider; it only moves the subject up into the clear area.
 function effAspect() {
   const w = viewport.clientWidth || 1, h = viewport.clientHeight || 1;
-  return Math.max(0.3, (w - 2 * viewShift.x) / Math.max(1, h - 2 * Math.abs(viewShift.y)));
+  return Math.max(0.3, (w - 2 * viewShift.x) / h);
 }
 function viewPose(name) {
   const a = effAspect(), side = Math.max(3.5, 4.5 / a), end = Math.max(3.6, 2.6 / a);
@@ -162,9 +169,12 @@ function flyTo(pose, ms = 750) {
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   tween = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pose.pos, t1: pose.target, start: performance.now(), ms: reduce ? 1 : ms };
 }
+const viewSel = $('#viewSel');
 function setViewButtons(name) {
   document.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === name)));
+  viewSel.value = name || '';                    // the phone view picker shows "View" when the camera has moved
 }
+viewSel.addEventListener('change', () => { if (viewSel.value) goView(viewSel.value); });
 function goView(name) { setViewButtons(name); flyTo(viewPose(name)); }
 document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => goView(b.dataset.view)));
 controls.addEventListener('start', () => { tween = null; setViewButtons(''); });
@@ -421,7 +431,10 @@ $('#tReset').addEventListener('click', () => {
 });
 const panel = $('#panel'), panelToggle = $('#panelToggle');
 panelToggle.addEventListener('click', () => { const open = !panel.classList.contains('open'); panel.classList.toggle('open', open); panelToggle.setAttribute('aria-expanded', String(open)); });
-function closePanelOnMobile() { if (window.matchMedia('(max-width: 760px)').matches) { panel.classList.remove('open'); panelToggle.setAttribute('aria-expanded', 'false'); } }
+function closePanelOnMobile() { if (window.matchMedia(PHONE_MQ).matches) { panel.classList.remove('open'); panelToggle.setAttribute('aria-expanded', 'false'); } }
+$('#panelClose').addEventListener('click', closePanelOnMobile);
+// on a phone, touching the bike closes the parts sheet so the bike can be turned
+renderer.domElement.addEventListener('pointerdown', () => { if (panel.classList.contains('open')) closePanelOnMobile(); });
 
 /* =====================================================================
    Stage 2: brake mode (operate, adjust, check wear)
@@ -570,13 +583,14 @@ function updateViewShift() {
   let x = 0, y = 0;
   if (pe && !pe.hidden) {
     const r = pe.getBoundingClientRect(), v = viewport.getBoundingClientRect();
-    if (v.width > 760) x = Math.round((r.right - v.left) / 2);
+    if (v.width > 760 || window.matchMedia(LANDSCAPE_PHONE_MQ).matches) x = Math.round((r.right - v.left) / 2);
     else y = -Math.round((v.bottom - r.top) / 2);
   }
   if (x !== viewShift.x || y !== viewShift.y) { viewShift = { x, y }; resize(); }
 }
 const enginePanelEl = $('#enginePanel'), gearPanelEl = $('#gearPanel'), elecPanelEl = $('#elecPanel');
 [panelEl, enginePanelEl, gearPanelEl, elecPanelEl].forEach((p) => new ResizeObserver(() => updateViewShift()).observe(p));
+window.addEventListener('resize', () => updateViewShift());   // turning a phone moves the panel between the bottom and the side
 const EYEBROW = { body: 'Stage 1 · Outer body', brakes: 'Stage 2 · Brakes', engine: 'Stage 3 · Engine', gearbox: 'Stage 4 · Clutch and gearbox', electrical: 'Stage 5 · Electrical' };
 function setStage(next) {
   if (stage === next) return;
