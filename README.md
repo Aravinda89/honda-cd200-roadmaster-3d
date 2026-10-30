@@ -26,6 +26,13 @@ Every stage has a fault finder with the workshop manual's causes and remedies.
 to zoom towards the pointer. Double-click a part to fly to it. The buttons on the right zoom in and
 out and go back to the whole view, and the arrow keys, + / − and 0 do the same from the keyboard.
 
+**Make it yours:** repaint the tank, side covers, chain case, fork and shock covers in the bike's
+original blue, pink, dark blue or any colour from the picker; the choice is remembered. The bike
+stands in a small workshop garage, which steps back while you work in the other stages.
+
+**On a phone:** the page fits portrait and landscape, with a compact top bar, a view picker, larger
+buttons and the controls kept clear of the bike.
+
 <table>
 <tr>
 <td><img src="docs/screenshots/brakes.jpg" alt="Rear drum brake applied, seen through the back plate"></td>

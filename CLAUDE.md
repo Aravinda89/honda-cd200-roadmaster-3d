@@ -37,6 +37,24 @@ cannot lose it. The navigation pad on the right (`zoomBy`, `homeView`), double-c
 part (`focusPart`) and the keys (arrows turn, Shift + arrows move, + / − zoom, 0 whole view, F focus
 the selected part) all go through `flyTo`. `homeView` returns to the current stage's starting view.
 
+**Paint.** `MAT.paint()` tags its material `userData.paint`; `setPaint(hex)` in app.js recolours every
+tagged material (tank, side covers, chain case, fork and shock covers, headlamp shell) and stores the
+choice in localStorage (`cd200.paint`). Presets are `PAINTS` in core.js: the original blue (used as is)
+and the owner's pink and dark blue. Other colours go through `paintBase`, which darkens them slightly
+so the clear-coated metallic paint renders like the swatch. New painted parts must use `MAT.paint()`.
+
+**Garage.** `js/scene/garage.js` builds a 4.6 × 3.8 m room (walls at z = ±1.9, x = −1.6 and 3.0) in the
+scene, not in `bike`, with picking disabled on every mesh. `updateGarage(camera)` hides any wall the
+camera is outside, so the room never blocks a view; `setGarageMode(stage)` hides the props and fades
+the walls in tool stages. Keep it light: no extra lights, no shadow casting, small canvas textures.
+
+**Phones.** One breakpoint set, `PHONE_MQ` in app.js and the matching CSS media query:
+`(max-width: 760px), (max-height: 520px) and (orientation: landscape)`. Portrait: two-row top bar
+(stages; View `<select>` + icon tools), stage panels at the bottom (max 46%) with `viewShift.y` moving
+the subject into the clear area. Landscape phones (`LANDSCAPE_PHONE_MQ`): panel on the left as on
+desktop. `pointer: coarse` enlarges touch targets. Phones render at pixel ratio ≤ 1.5 with a 1024
+shadow map. Check new UI at 390×844 and 844×390.
+
 There is no build step. `index.html` loads `js/app.js` as an ES module; three.js 0.160.0 comes from
 the jsDelivr CDN through the import map in `index.html`. Keep the version in the import map and
 `package.json` in step.
@@ -61,7 +79,8 @@ js/parts/exhaust.js     headers and silencers
 js/parts/lights.js      headlamp, speedometer, indicators, tail light, horns; lamp glows (poseLamps) and dial lamps (setDialLamps)
 js/parts/controls.js    handlebar, clutch lever and cable, mirrors, gear/kick pedals, cables (CONTROLS for posing)
 js/parts/brakes.js      stage 2: drums, back plates, shoes, springs, cams, lever, cable, pedal, rod, stop switch
-js/app.js               renderer, camera views, dimensions, explode, parts list, picking, brake and engine modes, loop
+js/scene/garage.js      workshop garage round the bike (scenery, outside `bike`); buildGarage, updateGarage, setGarageMode, setGarageTheme
+js/app.js               renderer, camera views, dimensions, explode, paint, parts list, picking, stage modes, intro, loop
 tools/check.mjs         smoke test + screenshots
 tools/serve.mjs         local server
 tools/photo-measure/    measure part positions from side photos (see its README)
@@ -128,7 +147,7 @@ stage's part module.
 `stage`, `brake`, `brakeView`, `engine(deg, play, follow)`, `engineView`, `cycle`,
 `gearbox({ gear, rpm, lever, slack, plate, settle })`, `gearView`, `shift`,
 `electrical({ key, lights, beam, turn, horn, fbrake, rbrake, start, fuse, flat, engine, run })`,
-`elecView`, `intro(on)` and `photoCam`. `tools/check.mjs` and `tools/photo-measure/overlay.mjs`
+`elecView`, `intro(on)`, `paint(hex)` and `photoCam`. `tools/check.mjs` and `tools/photo-measure/overlay.mjs`
 depend on them; extend them for new stages rather than reaching into internals from tests.
 
 **Design.** Colours are CSS custom properties defined for light and dark at the top of
