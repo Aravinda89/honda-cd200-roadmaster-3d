@@ -429,10 +429,27 @@ $('#tReset').addEventListener('click', () => {
   controls.autoRotate = false; tSpin.setAttribute('aria-pressed', 'false');
   goView('three'); syncUI();
 });
-const panel = $('#panel'), panelToggle = $('#panelToggle');
-panelToggle.addEventListener('click', () => { const open = !panel.classList.contains('open'); panel.classList.toggle('open', open); panelToggle.setAttribute('aria-expanded', String(open)); });
-function closePanelOnMobile() { if (window.matchMedia(PHONE_MQ).matches) { panel.classList.remove('open'); panelToggle.setAttribute('aria-expanded', 'false'); } }
-$('#panelClose').addEventListener('click', closePanelOnMobile);
+// The parts panel: a sheet that opens over the bike on phones, a side rail that can be hidden on wider
+// screens (remembered on the device).
+const panel = $('#panel'), panelToggle = $('#panelToggle'), appEl = $('#app');
+const RAIL_KEY = 'cd200.rail';
+const isPhone = () => window.matchMedia(PHONE_MQ).matches;
+const panelShown = () => (isPhone() ? panel.classList.contains('open') : !appEl.classList.contains('rail-off'));
+function syncPanelToggle() { panelToggle.setAttribute('aria-expanded', String(panelShown())); }
+function showPanel(open) {
+  if (isPhone()) panel.classList.toggle('open', open);
+  else {
+    appEl.classList.toggle('rail-off', !open);
+    try { localStorage.setItem(RAIL_KEY, open ? '1' : '0'); } catch (err) { /* storage may be blocked */ }
+  }
+  syncPanelToggle();
+}
+try { if (localStorage.getItem(RAIL_KEY) === '0') appEl.classList.add('rail-off'); } catch (err) { /* storage may be blocked */ }
+syncPanelToggle();
+window.addEventListener('resize', syncPanelToggle);
+panelToggle.addEventListener('click', () => showPanel(!panelShown()));
+function closePanelOnMobile() { if (isPhone()) showPanel(false); }
+$('#panelClose').addEventListener('click', () => showPanel(false));
 // on a phone, touching the bike closes the parts sheet so the bike can be turned
 renderer.domElement.addEventListener('pointerdown', () => { if (panel.classList.contains('open')) closePanelOnMobile(); });
 

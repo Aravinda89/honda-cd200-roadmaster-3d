@@ -42,14 +42,21 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 var(
 button, select, input, label { touch-action: manipulation; }
 button { font: inherit; color: inherit; cursor: pointer; }
 /* phone-only controls */
-.view-sel, .ti, .sheet-close { display: none; }
+.view-sel, .ti { display: none; }
 button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 #app { height: 100%; height: 100dvh; display: grid; grid-template-columns: minmax(280px, 330px) 1fr; }
 
 /* ---------- Parts index rail ---------- */
-#panel { background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto; display: flex; flex-direction: column; gap: 22px; padding: 22px 18px 28px; min-width: 0; z-index: 5; }
+#panel { position: relative; background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto; display: flex; flex-direction: column; gap: 22px; padding: 22px 18px 28px; min-width: 0; z-index: 5; }
+/* the rail can be hidden (Hide button, or Parts in the top bar) */
+#app.rail-off { grid-template-columns: 1fr; }
+#app.rail-off #panel { display: none; }
+.sheet-close { position: absolute; top: 14px; right: 12px; display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); background: var(--panel); border-radius: 7px; padding: 4px 9px 4px 7px; font: 600 11.5px/1 var(--font-display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.sheet-close::before { content: ""; width: 6px; height: 6px; border-left: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); margin-left: 3px; }
+.sheet-close:hover { color: var(--ink); border-color: var(--muted); }
+.sheet-close .grab { display: none; }
 .eyebrow { margin: 0; font: 500 11px/1.2 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
 h1 { margin: 6px 0 8px; font: 700 38px/0.92 var(--font-display); letter-spacing: .01em; text-transform: uppercase; text-wrap: balance; }
 .lede { margin: 0; color: var(--muted); font-size: 13px; max-width: 36ch; }
@@ -114,7 +121,6 @@ h1 { margin: 6px 0 8px; font: 700 38px/0.92 var(--font-display); letter-spacing:
 .tool[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
 .tool .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .5; }
 .tool[aria-pressed="true"] .dot { opacity: 1; }
-#panelToggle { display: none; }
 
 .bottombar { position: absolute; left: 16px; bottom: 16px; display: grid; gap: 6px; max-width: min(360px, calc(100% - 32px)); }
 .explode { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; background: var(--overlay); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; box-shadow: var(--shadow); backdrop-filter: blur(6px); }
@@ -272,9 +278,10 @@ input[type="range"] { width: 100%; min-width: 0; accent-color: var(--accent); }
   #app { grid-template-columns: 1fr; }
   #panel { position: fixed; left: 0; right: 0; bottom: 0; max-height: 75%; max-height: 75dvh; transform: translateY(105%); transition: transform .25s ease; border-right: 0; border-top: 1px solid var(--line); border-radius: 16px 16px 0 0; box-shadow: var(--shadow); padding-top: 8px; padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px)); z-index: 10; gap: 18px; }
   #panel.open { transform: none; }
-  #panelToggle { display: inline-flex; }
-  .sheet-close { display: grid; justify-items: center; gap: 6px; position: sticky; top: -8px; z-index: 1; margin: -8px -18px 0; padding: 8px 0 6px; border: 0; background: var(--panel); font: 600 12px/1 var(--font-display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
-  .sheet-close .grab { width: 40px; height: 4px; border-radius: 2px; background: var(--line); }
+  #app.rail-off #panel { display: flex; }
+  .sheet-close { display: grid; justify-items: center; gap: 6px; position: sticky; top: -8px; right: auto; z-index: 1; margin: -8px -18px 0; padding: 8px 0 6px; border: 0; border-radius: 0; background: var(--panel); font: 600 12px/1 var(--font-display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .sheet-close::before { display: none; }
+  .sheet-close .grab { display: block; width: 40px; height: 4px; border-radius: 2px; background: var(--line); }
   h1 { font-size: 32px; }
   /* top bar: stages on one row; view picker and icon tools on the second */
   .topbar { top: calc(10px + env(safe-area-inset-top, 0px)); left: 10px; right: 10px; display: grid; grid-template-columns: auto 1fr; gap: 6px; }

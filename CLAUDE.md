@@ -53,7 +53,9 @@ the walls in tool stages. Keep it light: no extra lights, no shadow casting, sma
 (stages; View `<select>` + icon tools), stage panels at the bottom (max 46%) with `viewShift.y` moving
 the subject into the clear area. Landscape phones (`LANDSCAPE_PHONE_MQ`): panel on the left as on
 desktop. `pointer: coarse` enlarges touch targets. Phones render at pixel ratio ≤ 1.5 with a 1024
-shadow map. Check new UI at 390×844 and 844×390.
+shadow map. Check new UI at 390×844 and 844×390. On wider screens the parts panel is a side rail that
+the Hide button (`#panelClose`) or Parts in the top bar hides (`#app.rail-off`, remembered as
+`cd200.rail`); on phones the same controls open and close the bottom sheet (`showPanel`).
 
 There is no build step. `index.html` loads `js/app.js` as an ES module; three.js 0.160.0 comes from
 the jsDelivr CDN through the import map in `index.html`. Keep the version in the import map and
