@@ -15,6 +15,7 @@ import './parts/exhaust.js';
 import { poseLamps, setDialLamps, setNeutralLamp } from './parts/lights.js';
 import { CONTROLS } from './parts/controls.js';
 import { BY_ID, CIRCUITS, evalCircuits, poseElectrical } from './parts/electrical.js';
+import { buildGarage, setGarageMode, setGarageTheme, updateGarage } from './scene/garage.js';
 import { BRAKES, FB, LINING_LIMIT, RB, TAIL_GLOW, poseBrake, poseLinkages, setLining } from './parts/brakes.js';
 
 /* =====================================================================
@@ -58,9 +59,10 @@ scene.add(sun, sun.target);
 
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshStandardMaterial({ color: 0xd6dde1, roughness: 0.95, metalness: 0 }));
 ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+buildGarage(scene, ground);
 const grid = new THREE.GridHelper(3.2, 32);
 grid.position.set(0.62, 0.0008, 0);
-grid.material.vertexColors = false; grid.material.transparent = true; grid.material.opacity = 0.55;
+grid.material.vertexColors = false; grid.material.transparent = true; grid.material.opacity = 0.32;
 scene.add(grid);
 
 const camera = new THREE.PerspectiveCamera(32, 1, 0.05, 60);
@@ -113,10 +115,10 @@ function dimLine(a, b, tick, label, sub, labelAt) {
 const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 function applyTheme() {
   const stage = new THREE.Color(cssVar('--stage') || '#dfe5e8');
-  scene.background = stage; scene.fog.color.copy(stage);
-  ground.material.color.set(cssVar('--floor') || '#d6dde1');
+  scene.background = stage; if (scene.fog) scene.fog.color.copy(stage);
   grid.material.color.set(cssVar('--grid') || '#b4c0c7');
   const dark = stage.getHSL({}).l < 0.4;
+  setGarageTheme(dark);                      // also sets the concrete floor's tint
   hemi.intensity = dark ? 0.35 : 0.55;
   dimMats.forEach((m) => m.color.set(cssVar('--accent') || '#16709f'));
 }
@@ -586,6 +588,7 @@ function setStage(next) {
   panelEl.hidden = stage !== 'brakes'; enginePanelEl.hidden = stage !== 'engine'; gearPanelEl.hidden = stage !== 'gearbox'; elecPanelEl.hidden = stage !== 'electrical';
   $('#faults').hidden = stage !== 'brakes'; $('#engineFaults').hidden = stage !== 'engine'; $('#gearFaults').hidden = stage !== 'gearbox'; $('#elecFaults').hidden = stage !== 'electrical';
   $('.bottombar').hidden = !body;
+  setGarageMode(stage);
   tDims.hidden = !body; if (!body) setDims(false);
   explodeTarget = explodeNow = 0; explodeInput.value = 0; explodeOut.textContent = '0%'; applyExplode(0);
   isolated = null; PARTS.forEach((p) => setVisible(p.id, true)); showSystems();
@@ -1076,6 +1079,7 @@ function frame(now) {
   }
   if (Math.abs(explodeTarget - explodeNow) > 0.0005) { explodeNow += (explodeTarget - explodeNow) * 0.16; applyExplode(explodeNow); }
   if (!camFrozen) controls.update();
+  updateGarage(camera);
   updateDims();
   processHover();
   renderer.render(scene, camera);

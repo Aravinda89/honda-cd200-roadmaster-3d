@@ -28,6 +28,8 @@ const SHOTS = {
   body_34: { view: 'three' },
   body_left: { view: 'left' },
   body_front: { view: 'front' },
+  body_right: { view: 'right' },
+  body_rear: { view: 'rear' },
   body_dims: { view: 'left', dims: true },
   body_explode: { view: 'three', explode: 0.8 },
   f_rest: { stage: 'brakes', brake: 'f', t: 0, bview: 'hub' },
